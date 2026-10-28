@@ -327,6 +327,70 @@ body.on-ask .ask-fab { display: none; }
 .tile small { color: var(--muted); }
 .more { justify-self: center; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 9px 18px; font-weight: 600; cursor: pointer; }
 .more:hover { border-color: var(--accent); }
+/* Animated weekly chart (after Willboard.com's chart-history video) */
+.cm-card { margin: 0 0 18px; }
+.cm-open { display: flex; width: 100%; align-items: center; gap: 14px; padding: 14px 16px; background: none; border: 0; cursor: pointer; text-align: left; color: var(--ink); }
+.cm-open b { font: 700 20px/1.1 var(--f-cond); text-transform: uppercase; letter-spacing: .03em; }
+.cm-open small { display: block; font: 500 13px var(--f-body); color: var(--muted); margin-top: 3px; }
+.cm-open .go { flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--dot-red); color: #fff; display: grid; place-items: center; }
+.cm-open .go svg { width: 16px; height: 16px; fill: currentColor; margin-left: 2px; }
+.cm-open:hover .go { background: #F0473F; }
+.cmv { position: relative; padding: 12px 12px 10px; background: var(--card); }
+.cmv:fullscreen { padding: 24px; display: flex; flex-direction: column; justify-content: center; }
+.cmv .stage { position: relative; overflow: hidden; }
+.cmv svg { display: block; }
+.cmv .ax { font: 600 11px var(--f-body); fill: var(--muted); }
+.cmv .ax.ny { fill: var(--ink); font-weight: 800; }
+.cmv .grid, .cmv .wl { stroke: var(--line); }
+.cmv .yr { stroke: var(--muted); stroke-dasharray: 2 3; }
+.cmv .date { position: absolute; left: 30px; top: 0; pointer-events: none; }
+.cmv .date b, .cmv .tally b { display: block; font: 700 28px/1 var(--f-cond); color: var(--ink); letter-spacing: .5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cmv .date small, .cmv .tally small { font: 600 11px var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .6px; white-space: nowrap; }
+.cmv .tally { position: absolute; right: 12px; top: 0; pointer-events: none; display: flex; gap: 12px; text-align: right; }
+.cmv .tally .tl + .tl { border-left: 1px solid var(--line); padding-left: 12px; }
+.cmv .tally b { transform-origin: right center; }
+.cmv .tally b.bump { animation: cmBump .6s ease-out; }
+@keyframes cmBump { 0% { transform: scale(1.35); color: var(--dot-yellow); } 100% { transform: scale(1); } }
+@media (max-width: 600px) { .cmv .tally { gap: 8px; } .cmv .tally .tl + .tl { padding-left: 8px; } .cmv .date b, .cmv .tally b { font-size: 21px; } .cmv .date small, .cmv .tally small { font-size: 9.5px; letter-spacing: .3px; } }
+.cmv .head { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 6px; pointer-events: none; will-change: transform; }
+.cmv .head .art { width: 26px; height: 26px; border-radius: 50%; font-size: 10px; box-shadow: 0 0 0 2px var(--c), 0 1px 4px rgb(0 0 0 / .4); }
+.cmv .head span { font: 700 12px var(--f-body); color: var(--ink); background: color-mix(in srgb, var(--card) 85%, transparent); padding: 1px 5px; border-radius: 3px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.cmv .head i { font: 700 12px/1 var(--f-body); font-style: normal; color: #0A111C; background: var(--c); min-width: 22px; text-align: center; padding: 3px 4px; border-radius: 3px; font-variant-numeric: tabular-nums; }
+.cmv .head i::before { content: '#'; opacity: .7; font-size: 10px; }
+.cmv .head em { font: 700 10.5px var(--f-body); font-style: normal; color: #111; background: var(--dot-yellow); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.cmv.ye .head .art { width: 20px; height: 20px; font-size: 8px; }
+.cmv.ye .head span { font-size: 11px; max-width: 160px; }
+.cmv.ye .head i { font-size: 11px; min-width: 18px; padding: 2px 3px; }
+.cmv .sum { opacity: 0; transform: scale(.98); transition: opacity .5s, transform .5s; }
+.cmv .sum.in { opacity: 1; transform: none; }
+.cmv .stage.ended { display: flex; align-items: center; }
+.cmv .stage.ended > svg, .cmv .stage.ended > .date, .cmv .stage.ended > .tally, .cmv .stage.ended > .head { display: none; }
+.cmv .sum-in { width: min(720px, 100%); margin: 0 auto; padding: 14px 4px; text-align: center; }
+.cmv .sum-h small { display: block; font: 700 11px var(--f-body); text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.cmv .sum-h b { display: block; font: 700 34px/1.1 var(--f-cond); text-transform: uppercase; color: var(--ink); margin: 2px 0 12px; }
+.cmv .nums { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+.cmv .nums .n { border-top: 3px solid var(--dot-yellow); padding-top: 6px; }
+.cmv .nums b { display: block; font: 700 30px/1 var(--f-cond); color: var(--ink); }
+.cmv .nums small { font: 600 10.5px var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.cmv .hls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: left; }
+.cmv .hl { min-width: 0; display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 4px; padding: 7px; background: var(--card-2); color: inherit; }
+.cmv .hl .art { width: 44px; height: 44px; flex: none; }
+.cmv .hl span { min-width: 0; }
+.cmv .hl small { display: block; font: 700 10px var(--f-body); text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.cmv .hl b, .cmv .hl.ties a { display: block; font: 700 13.5px/1.3 var(--f-body); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmv .hl em { font: 500 11.5px var(--f-body); font-style: normal; color: var(--muted); }
+.cmv .ones { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
+.cmv .ones small { font: 700 10.5px var(--f-body); text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-right: 4px; }
+.cmv .ones a { font: 700 12px var(--f-body); border: 1.5px solid var(--c); border-radius: 3px; padding: 3px 3px 3px 7px; display: inline-flex; gap: 6px; align-items: center; color: var(--ink); }
+.cmv .ones a i { font-style: normal; background: var(--dot-yellow); color: #111; padding: 0 5px; border-radius: 2px; font-size: 11px; }
+.cmv .again { margin-top: 14px; background: var(--ink); color: var(--card); border: 0; border-radius: 3px; padding: 8px 16px; font: 700 13px var(--f-body); cursor: pointer; }
+@media (max-width: 600px) { .cmv .nums { grid-template-columns: repeat(3, 1fr); } .cmv .hls { grid-template-columns: 1fr; } .cmv .sum-h b { font-size: 26px; } }
+.cmv .ctl { display: flex; align-items: center; gap: 10px; padding: 10px 4px 2px; flex-wrap: wrap; }
+.cmv .ctl button, .cmv .ctl select { white-space: nowrap; background: var(--card-2); border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; font: 700 12.5px var(--f-body); cursor: pointer; color: var(--ink); }
+.cmv .ctl button:hover { border-color: var(--muted); }
+.cmv .ctl .play { background: var(--ink); color: var(--card); border-color: var(--ink); min-width: 80px; }
+.cmv .ctl input[type=range] { flex: 1; min-width: 140px; accent-color: var(--dot-yellow); }
+.cmv .now { font: 600 12px var(--f-body); color: var(--muted); min-height: 16px; padding: 4px 4px 0; }
 </style>
 
 <header class="topbar">
@@ -702,6 +766,7 @@ function markPlaying(s) {
 async function togglePlay(s) {
   const p = $('player');
   if (playing === s) { p.pause(); playing = null; markPlaying(-1); return; }
+  CM?.pause();
   playing = s; markPlaying(s);
   try {
     const d = DATA.songs[s][4];
@@ -1080,6 +1145,7 @@ function renderHistory(kind) {
   $('page').innerHTML = `<dialog id="mo-pop" class="pop"></dialog><div class="ctitle"><h1>All Time</h1><p>The most played ${songs ? 'song' : 'artist'} of every month, ${monthName(ms[0].key)} to ${monthName(ms[ms.length - 1].key)}</p></div>
     <div class="controls"><div class="seg" role="group" aria-label="Songs or artists">
       <button onclick="location.hash='#/year-end/all-time'" aria-pressed="${songs}">Songs</button><button onclick="location.hash='#/year-end/all-time/artists'" aria-pressed="${!songs}">Artists</button></div></div>
+    ${movieCard('Watch every week', `Your weekly top 10, ${fmt(weeks()[0].d, { day: undefined })} to now, with the music`)}
     <div class="card"><div class="facts f4">
         <div><b>${num(ms.length)}</b><small>Months tracked</small></div>
         <div><b>${num(cnt.size)}</b><small>Different #1 ${songs ? 'songs' : 'artists'}</small></div>
@@ -1092,6 +1158,7 @@ function renderHistory(kind) {
     ${years.map(y => { const ym = ms.filter(m => m.key.startsWith(y));
       return `<section class="year"><div class="sec-head"><h2>${y}</h2><small class="through">${plural(ym.reduce((t, m) => t + m.sum, 0), 'play')}</small></div><div class="mgrid">${ym.map(tile).join('')}</div></section>`; }).join('')}`;
   for (const el of document.querySelectorAll('[data-mi]')) el.onclick = () => openMonth(+el.dataset.mi, songs);
+  hookMovie({ kind });
   const dlg = $('mo-pop');
   dlg.onclick = e => { if (e.target === dlg || e.target.closest('.pop-x') || e.target.closest('a')) dlg.close(); };
 }
@@ -1319,12 +1386,14 @@ function renderYearEnd(id, kind) {
   if (!kind) {
     $('page').innerHTML = `<div class="ctitle"><h1>Year-End Charts</h1><p>Your most played songs and artists of ${sp.decade ? 'the decade' : 'the year'} · ${num(d.plays)} plays in all</p></div>
       ${nav}
+      ${sp.decade ? '' : movieCard(`Watch ${sp.id}`, `Every week of ${sp.id}'s top 10, week over week, with the music`)}
       <div class="ye-hub">
         <section><div class="sec-head"><h2>Top Songs</h2><a class="link" href="#/year-end/${sp.id}/songs">See all ${Math.min(100, d.songs.length)} &rarr;</a></div><div class="ye-five">${d.songs.slice(0, 5).map(([x], k) => tileS(x, k)).join('')}</div></section>
         <section><div class="sec-head"><h2>Top Artists</h2><a class="link" href="#/year-end/${sp.id}/artists">See all ${Math.min(100, d.arts.length)} &rarr;</a></div><div class="ye-five">${d.arts.slice(0, 5).map(tileA).join('')}</div></section>
       </div>
       ${decadeNote}
       <div class="sec-head"><h2>Every year</h2></div>${buttons}`;
+    if (!sp.decade) hookMovie({ span: sp });
     return;
   }
   const songsK = kind !== 'artists';
@@ -1338,6 +1407,330 @@ function renderYearEnd(id, kind) {
     <div class="card scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows.join('')}</tbody></table></div>
     <p class="foot">Ranked by plays ${sp.decade ? 'across the decade' : `from Jan 1 to Dec 31, ${sp.id}`}. Peak and weeks count only the Thursday to Wednesday weekly charts that ended inside ${sp.decade ? 'the decade' : 'the year'}; days at #1 count the rolling 7-day chart.</p>
     ${decadeNote}${buttons}`;
+}
+// Animated weekly chart, after Willboard.com's chart-history video: the weekly top 10 plays left to
+// right in a moving window of about ten weeks, the current week in the middle. Each song (or artist)
+// draws its line as it charts, cover and position riding the tip, while the highest-charting song's
+// preview plays underneath, crossfading when the lead changes. At the end a card sums it up while the
+// biggest one plays. The All Time tab runs every week; a Year-End year runs that year's weeks.
+const CM_SIZE = 10;
+const CM_DATA = {};
+function cmData(kind) {
+  if (CM_DATA[kind]) return CM_DATA[kind];
+  const W = weeks(), runs = new Map(), debut = new Map(), tops = [];
+  let prevAt = null;
+  W.forEach((w, i) => {
+    let ranked;
+    if (kind === 'songs') ranked = [...w.pos].sort((x, y) => x[1] - y[1]).map(([x]) => x);
+    else {
+      const at = artistTotals(total(w.d - 7, w.d - 1));
+      ranked = rankArtists(at, prevAt).map(([a]) => a);
+      tops[i] = new Map(ranked.slice(0, CM_SIZE).map(a => [a, at.get(a).top]));
+      prevAt = at;
+    }
+    ranked.forEach((x, k) => { if (!debut.has(x)) debut.set(x, [i, k + 1]); });
+    ranked.slice(0, CM_SIZE).forEach((x, k) => {
+      let r = runs.get(x);
+      if (!r) runs.set(x, r = { id: x, a: i, p: [] });
+      r.p[i - r.a] = k + 1;
+    });
+  });
+  for (const r of runs.values()) {
+    for (let j = 0; j < r.p.length; j++) r.p[j] ||= 0;
+    r.b = r.a + r.p.length - 1;
+    r.first1 = r.p.indexOf(1) < 0 ? Infinity : r.a + r.p.indexOf(1);
+    r.first5 = r.a + r.p.findIndex(p => p && p <= 5);
+    if (r.first5 < r.a) r.first5 = Infinity;
+  }
+  return CM_DATA[kind] = { runs: [...runs.values()].sort((x, y) => x.a - y.a), debut, tops };
+}
+let CM = null;
+function stopChartMovie() { if (CM) { CM.stop(); CM = null; } }
+window.addEventListener('hashchange', stopChartMovie);
+const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+// No browns or oranges: they read as brown on the night blue
+const CM_COLORS = ['#E0312C', '#3B8BDE', '#F2B705', '#5CC27A', '#B07CF0', '#EC4899', '#4FD1C5', '#7DB3EA', '#A3E635', '#F0786E',
+  '#22D3EE', '#FDE047', '#818CF8', '#F472B6', '#34D399', '#C084FC', '#60A5FA', '#FB7185', '#E879F9', '#2DD4BF'];
+// A card that opens the player on click (a tap also lets phones start the music)
+function movieCard(title, sub) {
+  return `<div class="card cm-card" id="cm-box"><button class="cm-open" type="button"><span class="go">${PLAY_ICON}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span></button></div>`;
+}
+function hookMovie(opt) {
+  const box = $('cm-box');
+  if (box) box.querySelector('.cm-open').onclick = () => { stopChartMovie(); CM = chartMovie(box, opt); CM.play(); };
+}
+function chartMovie(el, opt = {}) {
+  const sp = opt.span, year = sp ? sp.id : null;
+  let kind = opt.kind === 'artists' ? 'artists' : 'songs';
+  el.innerHTML = `<div class="cmv${year ? ' ye' : ''}"><div class="stage"><svg></svg><div class="date"><small></small><b></b></div><div class="tally"><div class="tl"><small class="l1"></small><b class="n1">0</b></div><div class="tl"><small class="l5"></small><b class="n5">0</b></div></div><div class="sum" hidden></div></div>
+    <div class="ctl"><button class="play">▶ Play</button><button class="restart" title="Start over">⟲</button>
+      <input type="range" min="0" step="0.01" aria-label="Timeline">
+      <select class="speed" aria-label="Speed">${year
+        ? '<option value="0.25">1 week / 4 sec</option><option value="0.333" selected>1 week / 3 sec</option><option value="0.5">1 week / 2 sec</option>'
+        : '<option value="1">1 week/sec</option><option value="2" selected>2 weeks/sec</option><option value="4">4 weeks/sec</option><option value="8">8 weeks/sec</option>'}</select>
+      <select class="which" aria-label="Songs or artists"><option value="songs"${kind === 'songs' ? ' selected' : ''}>Top 10 songs</option><option value="artists"${kind === 'artists' ? ' selected' : ''}>Top 10 artists</option></select>
+      <button class="mute" title="Music on or off">♪ On</button><button class="fs" title="Full screen">⛶</button></div>
+    <div class="now"></div></div>`;
+  const root = el.querySelector('.cmv'), stage = root.querySelector('.stage'), svg = root.querySelector('svg');
+  const range = root.querySelector('input'), playB = root.querySelector('.play'), now = root.querySelector('.now'), sumEl = root.querySelector('.sum');
+  const W = weeks();
+  let D, runs, first, last, t, run = false, raf = 0, prev = 0, heads = new Map(), color = new Map(), ended = false, muted = false;
+  const songsK = () => kind === 'songs';
+  const name = x => songsK() ? song(x) : aname(x);
+  const pic = (x, cls) => songsK() ? songArt(x, cls) : artistArt(x, cls);
+  const href = x => songsK() ? `#/song/${x}` : `#/artist/${x}`;
+  // The music: a song plays itself; an artist plays their most played song that week
+  const tuneOf = (x, i) => songsK() ? x : D.tops[i]?.get(x);
+  const A = [new Audio(), new Audio()].map(a => { a.loop = true; a.volume = 0; return a; });
+  const tracks = {}, want = { id: null }, bad = new Set();
+  let heard = {}, cur = { id: null, a: null };
+
+  function load(k) {
+    kind = k; D = cmData(kind);
+    if (year) {
+      first = W.findIndex(w => w.d - 1 >= sp.a); last = W.findLastIndex(w => w.d - 1 <= sp.b);
+      runs = D.runs.filter(r => r.b >= first && r.a <= last && r.p.some((p, j) => p && r.a + j >= first && r.a + j <= last));
+    } else { runs = D.runs; first = 0; last = W.length - 1; }
+    // Lines on the chart at the same time never share a color while there are colors to go round
+    color = new Map();
+    runs.forEach((x, i) => {
+      const busy = new Set(runs.slice(Math.max(0, i - 60), i).filter(y => y.b >= x.a - 1).map(y => color.get(y.id)));
+      color.set(x.id, CM_COLORS.find(c => !busy.has(c)) || CM_COLORS[i % CM_COLORS.length]);
+    });
+    t = first; heard = {}; hideSummary();
+    range.min = first; range.max = last; range.value = t;
+    for (const h of heads.values()) h.remove();
+    heads = new Map();
+    root.querySelector('.l1').textContent = songsK() ? '#1 songs' : '#1 artists';
+    root.querySelector('.l5').textContent = 'Top 5';
+    for (const b of root.querySelectorAll('.tally b')) b.textContent = '0';
+    draw();
+  }
+  // Heads are made when a line first shows up, so a long history doesn't build thousands up front
+  function head(x) {
+    let h = heads.get(x.id);
+    if (!h) {
+      h = document.createElement('div');
+      h.className = 'head'; h.style.setProperty('--c', color.get(x.id)); h.style.opacity = 0;
+      h.innerHTML = `${pic(x.id, 'round')}<i></i><span>${esc(name(x.id))}</span><em hidden></em>`;
+      stage.appendChild(h); heads.set(x.id, h);
+    }
+    return h;
+  }
+  const pos = (x, i) => i >= x.a && i <= x.b ? x.p[i - x.a] : 0;
+  // Smooth, monotone curve between weeks (cubic Hermite; slopes limited so a line never overshoots)
+  const slope = (xs, i, Y) => {
+    const p = pos(xs, i), a = pos(xs, i - 1), b = pos(xs, i + 1);
+    if (!a || !b) return 0;
+    const d0 = Y(p) - Y(a), d1 = Y(b) - Y(p);
+    if (!d0 || !d1 || Math.sign(d0) !== Math.sign(d1)) return 0;
+    return Math.sign(d0) * Math.min(Math.abs(d0 + d1) / 2, 3 * Math.min(Math.abs(d0), Math.abs(d1)));
+  };
+  const herm = (y0, y1, m0, m1, v) => { const v2 = v * v, v3 = v2 * v; return (2 * v3 - 3 * v2 + 1) * y0 + (v3 - 2 * v2 + v) * m0 + (-2 * v3 + 3 * v2) * y1 + (v3 - v2) * m1; };
+  const ease = (xs, i, X, Y, u) => {
+    const x0 = X(i), x1 = X(i + 1), y0 = Y(pos(xs, i)), y1 = Y(pos(xs, i + 1)), m0 = slope(xs, i, Y), m1 = slope(xs, i + 1, Y);
+    if (y0 === y1 && !m0 && !m1) return `L${(x0 + (x1 - x0) * u).toFixed(1)} ${y0.toFixed(1)}`;
+    const n = Math.max(2, Math.min(12, Math.round((x1 - x0) / 3))), k1 = Math.max(1, Math.ceil(n * u));
+    let out = '';
+    for (let k = 1; k <= k1; k++) { const v = Math.min(u, k / n); out += `L${(x0 + (x1 - x0) * v).toFixed(1)} ${herm(y0, y1, m0, m1, v).toFixed(1)}`; }
+    return out;
+  };
+  const tipY = (xs, i, Y, v) => herm(Y(pos(xs, i)), Y(pos(xs, i + 1)), slope(xs, i, Y), slope(xs, i + 1, Y), v);
+  const wkLabel = i => fmt(W[i].d, { year: undefined });
+
+  function draw() {
+    const Wd = Math.max(300, stage.clientWidth), full = document.fullscreenElement === root;
+    const H = full ? Math.max(320, innerHeight - 150) : Wd < 600 ? 360 : 460;
+    const L = 30, R = 12, T = Wd < 600 ? 62 : 56, B = 28, hs = year ? 10 : 13;
+    const win = Wd < 600 ? 4 : 5, ppw = (Wd - L - R) / (Wd < 600 ? 10 : 2 * win), tipX = L + win * ppw, x = i => tipX - (t - i) * ppw;
+    const y = p => T + (p - 1) * (H - T - B) / (CM_SIZE - 1), off = H - B + 26;
+    let g = `<defs><clipPath id="cmclip"><rect x="${L}" y="0" width="${Wd - L - R}" height="${H}"/></clipPath></defs>`;
+    g += [1, 3, 5, 7, 10].map(p => `<line class="grid" x1="${L}" x2="${Wd - R}" y1="${y(p)}" y2="${y(p)}"/><text class="ax" x="${L - 8}" y="${y(p) + 4}" text-anchor="end">${p}</text>`).join('');
+    g += '<g clip-path="url(#cmclip)">';
+    const lo = Math.max(0, Math.floor(t - win - 1));
+    // A line and a date for every week (every other one on a phone); a new year gets its number
+    const every = ppw < 46 ? 2 : 1, yr = i => dayStr(W[i].d).slice(0, 4), ny = i => i > 0 && i < W.length && yr(i) !== yr(i - 1);
+    for (let i = lo; i <= Math.min(W.length - 1, Math.ceil(t + win + 1)); i++) {
+      g += `<line class="${ny(i) ? 'yr' : 'wl'}" x1="${x(i)}" x2="${x(i)}" y1="${T - 14}" y2="${H - B}"/>`;
+      if (x(i) < L + 12 || x(i) > Wd - R - 12) continue;
+      if (ny(i) || (i % every === 0 && (every === 1 || !ny(i - 1) && !ny(i + 1)))) g += `<text class="ax${ny(i) ? ' ny' : ''}" x="${x(i)}" y="${H - 8}" text-anchor="middle">${ny(i) ? yr(i) : wkLabel(i)}</text>`;
+    }
+    const i0 = Math.floor(t), f = t - i0, seen = new Set();
+    let lead = null, tune = null;
+    for (const xs of runs) {
+      if (xs.a > i0 + 1) break;
+      if (xs.b < lo) continue;
+      const b = Math.min(i0, xs.b);
+      let d = '', pen = false;
+      for (let i = Math.max(xs.a, lo); i <= b; i++) {
+        const p = pos(xs, i);
+        if (!p) { pen = false; continue; }
+        d += pen ? ease(xs, i - 1, x, y, 1) : `M${x(i).toFixed(1)} ${y(p).toFixed(1)}`;
+        pen = true;
+      }
+      // The tip, on its way to next week's spot (in from below on an entry, out the bottom on a drop)
+      const p0 = pos(xs, i0), p1 = i0 < last ? pos(xs, i0 + 1) : 0;
+      if (p0 || p1) {
+        const y0 = p0 ? y(p0) : off, y1 = p1 ? y(p1) : off;
+        const hx = x(i0 + f), hy = p0 && p1 ? tipY(xs, i0, y, f) : y0 + (y1 - y0) * (f * f * (3 - 2 * f));
+        if (p0) d += (pen ? '' : `M${x(i0).toFixed(1)} ${y(p0).toFixed(1)}`) + (p1 ? ease(xs, i0, x, y, f) : `L${hx.toFixed(1)} ${hy.toFixed(1)}`);
+        else d += `M${hx.toFixed(1)} ${hy.toFixed(1)}`;
+        const cp = f < .5 ? p0 || p1 : p1 || p0, wi = f < .5 ? i0 : Math.min(last, i0 + 1), tn = tuneOf(xs.id, wi);
+        if (cp && (!lead || cp < lead.p)) lead = { id: xs.id, p: cp };
+        if (cp && tn != null && DATA.songs[tn][4] && !bad.has(tn) && (!tune || cp < tune.p)) tune = { s: tn, p: cp };
+        const h = head(xs); seen.add(xs.id);
+        h.style.opacity = !p0 ? f : !p1 ? 1 - f : 1;
+        h.style.transform = `translate(${(hx - hs).toFixed(1)}px, ${(hy - hs).toFixed(1)}px)`;
+        h.style.zIndex = 100 - cp;
+        const pb = h.querySelector('i'), shown = String(cp);
+        if (pb.textContent !== shown) pb.textContent = shown;
+        const em = h.querySelector('em');
+        em.hidden = p0 !== 1;
+        if (p0 === 1) { let n1 = 0; for (let i = xs.a; i <= i0; i++) if (pos(xs, i) === 1) n1++; em.textContent = `#1 · ${n1} wk${n1 === 1 ? '' : 's'}`; }
+      }
+      if (d) g += `<path d="${d}" fill="none" stroke="${color.get(xs.id)}" stroke-width="${p0 || p1 ? 3 : 2}" stroke-opacity="${p0 || p1 ? 1 : .35}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+    for (const [id, h] of heads) if (!seen.has(id) && h.style.opacity !== '0') h.style.opacity = 0;
+    g += '</g>';
+    svg.setAttribute('width', Wd); svg.setAttribute('height', H);
+    svg.innerHTML = g;
+    const wi = Math.min(i0, last);
+    root.querySelector('.date b').textContent = fmt(W[wi].d);
+    root.querySelector('.date small').textContent = `Weekly top 10 · week of`;
+    // Running totals of what has reached #1 and the top 5 so far (from the start of the year on a year)
+    const upTo = Math.min(last, f < .5 ? i0 : i0 + 1);
+    let n1 = 0, n5 = 0;
+    for (const xs of runs) {
+      if (xs.a > upTo) break;
+      const from = year ? first : 0;
+      if (xs.first1 <= upTo && (xs.first1 >= from || xs.p.some((p, j) => p === 1 && xs.a + j >= from && xs.a + j <= upTo))) n1++;
+      if (xs.first5 <= upTo && (xs.first5 >= from || xs.p.some((p, j) => p && p <= 5 && xs.a + j >= from && xs.a + j <= upTo))) n5++;
+    }
+    for (const [sel, n] of [['.n1', n1], ['.n5', n5]]) {
+      const b = root.querySelector('.tally ' + sel);
+      if (b.textContent !== String(n)) {
+        const up = n > +b.textContent;
+        b.textContent = n;
+        if (up && run) { b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+      }
+    }
+    range.value = t;
+    const on = tune ? tune.s : lead && songsK() ? lead.id : null;
+    now.textContent = on != null ? `${tune && !muted ? '♪ ' : ''}${song(on)} · ${aname(artistOf(on))}` : '';
+    if (!ended) { want.id = run && !muted && tune ? tune.s : null; sync(); }
+  }
+
+  // Music: each preview is fetched once; two players crossfade, and a song picks up where it left off
+  function track(s) {
+    if (!(s in tracks)) { const d = DATA.songs[s][4]; tracks[s] = (typeof d === 'string' ? Promise.resolve(d) : deezerPreview(d)).catch(() => null); }
+    return tracks[s];
+  }
+  async function sync() {
+    if (want.id === cur.id) return;
+    const id = want.id, old = cur.a;
+    if (old && cur.id != null) heard[cur.id] = old.currentTime;
+    cur = { id, a: null };
+    if (old) fade(old, 0);
+    if (id == null) return;
+    const url = await track(id);
+    if (!url) bad.add(id);
+    if (cur.id !== id || !url) { if (cur.id === id) cur = { id: null, a: null }; return; }
+    const a = old ? (A[0] === old ? A[1] : A[0]) : A.find(p => p.paused) || A[0];
+    a._f = (a._f || 0) + 1;
+    a.src = heard[id] ? `${url}#t=${heard[id].toFixed(2)}` : url; a.volume = 0; cur.a = a;
+    try { await a.play(); if (cur.a === a) fade(a, .8); }
+    catch (e) { if (e.name !== 'AbortError') bad.add(id); if (cur.id === id) cur = { id: null, a: null }; }
+  }
+  function fade(a, to) {
+    const from = a.volume, t0 = performance.now(), me = a._f = (a._f || 0) + 1;
+    const step = () => {
+      if (a._f !== me) return;
+      const k = Math.min(1, (performance.now() - t0) / 700);
+      a.volume = from + (to - from) * k;
+      if (k < 1) requestAnimationFrame(step); else if (!to) a.pause();
+    };
+    step();
+  }
+
+  function frame(ts) {
+    const dt = Math.min(.1, (ts - prev) / 1000); prev = ts;
+    if (t < last) t = Math.min(last, t + dt * +root.querySelector('.speed').value);
+    else { pause(); return summary(); }
+    draw();
+    raf = requestAnimationFrame(frame);
+  }
+  function play() {
+    if (t >= last) t = first;
+    hideSummary();
+    if (playing != null) { $('player').pause(); playing = null; markPlaying(-1); }
+    // Phones only let audio start inside a tap, so wake both players now, while this is one
+    for (const a of A) if (!a.src) { a.src = SILENCE; a.play().then(() => a.pause()).catch(() => {}); }
+    run = true; playB.textContent = '❚❚ Pause';
+    prev = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
+  }
+  function pause() {
+    run = false; playB.textContent = '▶ Play';
+    cancelAnimationFrame(raf); draw();
+  }
+  playB.onclick = () => run ? pause() : play();
+  root.querySelector('.restart').onclick = () => { t = first; heard = {}; hideSummary(); draw(); };
+  range.oninput = () => { t = +range.value; hideSummary(); draw(); };
+
+  // The end card: the stretch in numbers, its biggest hits, and (for a year) every #1
+  function summary() {
+    const st = runs.map(r => {
+      const wk = r.p.map((p, j) => [r.a + j, p]).filter(([i, p]) => p && i >= first && i <= last), ps = wk.map(w => w[1]);
+      const [di, dp] = D.debut.get(r.id);
+      return { id: r.id, peak: Math.min(...ps), n1: ps.filter(p => p === 1).length, wks: ps.length, fresh: di > 0 && di >= first && di <= last, di, dp, first1: (wk.find(w => w[1] === 1) || [])[0] };
+    });
+    const count = f => st.filter(f).length, top = st.filter(x => x.peak === 1);
+    const best = [...st].sort((a, b) => b.n1 - a.n1 || a.peak - b.peak || b.wks - a.wks)[0];
+    const long = [...st].sort((a, b) => b.wks - a.wks || a.peak - b.peak)[0];
+    const plays = x => songsK() ? ALL.get(x.id) || 0 : ALL_ART().get(x.id)?.n || 0;
+    const yd = year && yeData(sp), yeTopId = yd ? (songsK() ? yd.songs[0]?.[0] : yd.arts[0]?.[0]) : null;
+    const big = year ? st.find(x => x.id === yeTopId) || best : [...st].sort((a, b) => plays(b) - plays(a))[0];
+    const debuts = st.filter(x => x.fresh && x.dp <= CM_SIZE).sort((a, b) => a.dp - b.dp || a.di - b.di);
+    const ties = debuts.filter(x => x.dp === debuts[0]?.dp);
+    const n = (v, l) => `<div class="n"><b>${num(v)}</b><small>${l}</small></div>`;
+    const sub = x => songsK() ? esc(aname(artistOf(x.id))) + ' · ' : '';
+    const atOne = x => x.n1 ? `${x.n1} wk${x.n1 === 1 ? '' : 's'} at #1 · ${x.wks} in the top 10` : `Peaked at #${x.peak} · ${x.wks} wk${x.wks === 1 ? '' : 's'}`;
+    const row = (lab, x, note) => x ? `<a class="hl" href="${href(x.id)}">${pic(x.id, songsK() ? '' : 'round')}<span><small>${lab}</small><b>${esc(name(x.id))}</b><em>${sub(x)}${note}</em></span></a>` : '';
+    const label = songsK() ? 'Songs' : 'Artists';
+    const nums = n(st.length, `${label} in the top 10`) + n(top.length, top.length === 1 ? '#1' : '#1s') + n(count(x => x.peak <= 5), 'Top 5s')
+      + (year ? n(count(x => x.fresh), 'New this year') : songsK() ? n(new Set(st.map(x => artistOf(x.id))).size, 'Artists') : n(best.n1, 'Most weeks at #1')) + n(last - first + 1, 'Weeks');
+    const hls = (year
+      ? row('Year-End No. 1', big, atOne(big)) + (best === big ? row('Longest run', long, `${long.wks} weeks in the top 10`) : row('Most weeks at #1', best, atOne(best)))
+      : row('Most played ever', big, `${plural(plays(big), 'play')}`) + row('Most weeks at #1', best, atOne(best)))
+      + (ties.length > 1
+        ? `<div class="hl ties">${pic(ties[0].id, songsK() ? '' : 'round')}<span><small>Highest debut · ${ties.length} at #${ties[0].dp}</small>${ties.slice(0, 4).map(x => `<a href="${href(x.id)}">${esc(name(x.id))}</a>`).join('')}${ties.length > 4 ? `<em>and ${ties.length - 4} more</em>` : ''}</span></div>`
+        : row('Highest debut', ties[0], ties[0] ? `Entered at #${ties[0].dp} · ${fmt(W[ties[0].di].d)}` : ''));
+    sumEl.innerHTML = `<div class="sum-in"><div class="sum-h"><small>Weekly top 10 ${songsK() ? 'songs' : 'artists'}</small><b>${year ? `${year} on the chart` : `${fmt(W[first].d, { month: 'short', day: undefined })} to ${fmt(W[last].d, { month: 'short', day: undefined })}`}</b></div>
+      <div class="nums">${nums}</div><div class="hls">${hls}</div>
+      ${year && top.length ? `<div class="ones"><small>Every #1</small>${top.sort((a, b) => a.first1 - b.first1).map(x => `<a href="${href(x.id)}" style="--c:${color.get(x.id)}">${esc(name(x.id))}<i>${x.n1}</i></a>`).join('')}</div>` : ''}
+      <button class="again">⟲ Watch again</button></div>`;
+    stage.style.minHeight = svg.getAttribute('height') + 'px';
+    stage.classList.add('ended');
+    sumEl.hidden = false; requestAnimationFrame(() => sumEl.classList.add('in'));
+    sumEl.querySelector('.again').onclick = () => { t = first; heard = {}; play(); };
+    ended = true;
+    const tn = big && tuneOf(big.id, Math.min(last, big.first1 ?? last));
+    const endTune = songsK() ? big?.id : (tn ?? ALL_ART().get(big.id)?.top);
+    want.id = !muted && endTune != null && DATA.songs[endTune][4] && !bad.has(endTune) ? endTune : null;
+    now.textContent = want.id != null ? `♪ ${song(want.id)} · ${aname(artistOf(want.id))}` : '';
+    sync();
+  }
+  function hideSummary() { ended = false; sumEl.hidden = true; sumEl.classList.remove('in'); stage.classList.remove('ended'); stage.style.minHeight = ''; }
+  root.querySelector('.mute').onclick = e => { muted = !muted; e.target.textContent = muted ? '♪ Off' : '♪ On'; draw(); };
+  root.querySelector('.fs').onclick = () => document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen?.();
+  root.querySelector('.which').onchange = e => { const was = run; pause(); want.id = null; sync(); load(e.target.value); if (was) play(); };
+  const ro = new ResizeObserver(() => { if (!ended) draw(); });
+  ro.observe(stage);
+  document.addEventListener('fullscreenchange', draw);
+  load(kind);
+  return {
+    play, pause,
+    stop() { pause(); want.id = null; sync(); A.forEach(a => a.pause()); ro.disconnect(); document.removeEventListener('fullscreenchange', draw); },
+  };
 }
 let ART_ALL = null;
 const ALL_ART = () => ART_ALL ??= artistTotals(ALL);
