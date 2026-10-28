@@ -114,6 +114,8 @@ td.who { text-align: left; white-space: normal; min-width: 140px; }
 td.who b { display: block; font-weight: 600; }
 td.who span { color: var(--muted); font-size: 12.5px; }
 td.pl { font-weight: 700; }
+/* A second, smaller figure under the main number (e.g. plays under days at #1) */
+.subv { display: block; margin-top: 2px; font-size: 12px; font-weight: 500; color: var(--muted); }
 td.dim { color: var(--muted); }
 .empty { padding: 24px 14px; color: var(--muted); text-align: left; }
 
@@ -436,7 +438,7 @@ function runsAtOne(match) {
 function runsDialog(title, runs) {
   return `<dialog id="wk1" class="pop"><div class="pop-head"><h3>${esc(title)} · days with the #1 song</h3><button class="pop-x" aria-label="Close">&times;</button></div>
     <p class="pop-sub">Each run at #1 on the rolling 7-day chart, newest first, with its best 7-day total</p>
-    <div class="scroll pop-body"><table><tbody>${runs.map(r => `<tr><td class="dim wk">${r.a === r.b ? fmt(r.a) : `${fmt(r.a, { year: r.a === r.b || dayStr(r.a).slice(0, 4) === dayStr(r.b).slice(0, 4) ? undefined : 'numeric' })} to ${fmt(r.b)}`}</td>${songCell(r.s)}<td class="pl">${plural(r.b - r.a + 1, 'day')}<br><span class="dim">${plural(r.best, 'play')}</span></td></tr>`).join('')}</tbody></table></div></dialog>`;
+    <div class="scroll pop-body"><table><tbody>${runs.map(r => `<tr><td class="dim wk">${r.a === r.b ? fmt(r.a) : `${fmt(r.a, { year: r.a === r.b || dayStr(r.a).slice(0, 4) === dayStr(r.b).slice(0, 4) ? undefined : 'numeric' })} to ${fmt(r.b)}`}</td>${songCell(r.s)}<td class="pl">${plural(r.b - r.a + 1, 'day')}<span class="subv">${plural(r.best, 'play')}</span></td></tr>`).join('')}</tbody></table></div></dialog>`;
 }
 const daysAtOne = (arr, k) => { let n = 0; for (let d = 0; d <= END; d++) if (arr[d] === k) n++; return n; };
 const streak = (arr, k, d = END) => { let n = 0; while (d - n >= 0 && arr[d - n] === k) n++; return n; };
@@ -811,7 +813,7 @@ function openKpi(a, k) {
     }
     title = 'Days as the #1 artist'; sub = 'Each run at #1 on the rolling 7-day artist chart, newest first, with its best 7-day total and top song';
     head = '<th>Dates</th><th class="l">Top song</th><th>Days</th>';
-    rows = runs.reverse().map(r => `<tr><td class="dim wk">${r.a === r.b ? fmt(r.a) : `${fmt(r.a, { year: dayStr(r.a).slice(0, 4) === dayStr(r.b).slice(0, 4) ? undefined : 'numeric' })} to ${fmt(r.b)}`}</td>${songCell(r.top)}<td class="pl">${plural(r.b - r.a + 1, 'day')}<br><span class="dim">${plural(r.best, 'play')}</span></td></tr>`);
+    rows = runs.reverse().map(r => `<tr><td class="dim wk">${r.a === r.b ? fmt(r.a) : `${fmt(r.a, { year: dayStr(r.a).slice(0, 4) === dayStr(r.b).slice(0, 4) ? undefined : 'numeric' })} to ${fmt(r.b)}`}</td>${songCell(r.top)}<td class="pl">${plural(r.b - r.a + 1, 'day')}<span class="subv">${plural(r.best, 'play')}</span></td></tr>`);
   } else if (k === 'days') {
     const ds = [];
     for (let d = 0; d <= END; d++) {
@@ -1116,7 +1118,7 @@ function askRuns(arr, artists, consecutive) {
     const rows = withTies(runs.sort((x, y) => y.n - x.n || y.b - x.b), 10, r => r.n);
     const t = rows[0];
     return { title: `Longest runs at #1 · ${what}s`, lead: `${artists ? `<a href="#/artist/${t.k}">${esc(aname(t.k))}</a>` : `<a href="#/song/${t.k}">${esc(song(t.k))}</a> by ${esc(aname(artistOf(t.k)))}`} had the longest run at #1: ${plural(t.n, 'straight day')}, from ${fmt(t.a)} to ${fmt(t.b)}.`,
-      rows: rows.map(r => ({ pos: rows.findIndex(x => x.n === r.n) + 1, cell: cell(r.k), val: `${plural(r.n, 'day')}<br><span class="dim">${fmt(r.a, { year: dayStr(r.a).slice(0, 4) === dayStr(r.b).slice(0, 4) ? undefined : 'numeric' })} to ${fmt(r.b)}</span>` })),
+      rows: rows.map(r => ({ pos: rows.findIndex(x => x.n === r.n) + 1, cell: cell(r.k), val: `${plural(r.n, 'day')}<span class="subv">${fmt(r.a, { year: dayStr(r.a).slice(0, 4) === dayStr(r.b).slice(0, 4) ? undefined : 'numeric' })} to ${fmt(r.b)}</span>` })),
       note: 'Days at #1 on the rolling 7-day chart' };
   }
   const rows = withTies([...by].sort((x, y) => y[1] - x[1]), 10, r => r[1]);
@@ -1142,7 +1144,7 @@ function askBestPeriod(unit, artists, q) {
   const nm = id => artists ? `<a href="#/artist/${id}">${esc(aname(id))}</a>` : `<a href="#/song/${id}">${esc(song(id))}</a> by ${esc(aname(artistOf(id)))}`;
   return { title: `Most plays in a single ${unit} · ${artists ? 'artists' : 'songs'}`,
     lead: `${nm(k0)} holds the record with ${plural(v0.n, 'play')} in ${unit === 'year' ? '' : unit === 'day' ? 'one day, ' : ''}${label(v0.key)}.`,
-    rows: rows.map(([id, v]) => ({ pos: rows.findIndex(r => r[1].n === v.n) + 1, cell: artists ? artistCell(id, '') : songCell(id), val: `${plural(v.n, 'play')}<br><span class="dim">${label(v.key)}</span>` })),
+    rows: rows.map(([id, v]) => ({ pos: rows.findIndex(r => r[1].n === v.n) + 1, cell: artists ? artistCell(id, '') : songCell(id), val: `${plural(v.n, 'play')}<span class="subv">${label(v.key)}</span>` })),
     note: `Each ${artists ? 'artist' : 'song'}'s best ${unit}${unit === 'week' ? ' (Thursday to Wednesday)' : ''}` };
 }
 const WK0 = (() => { let t = 0; while (new Date(T0 + t * DAY).getUTCDay() !== 4) t++; return t - 7; })();
