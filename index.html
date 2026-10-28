@@ -216,6 +216,10 @@ td.pb { width: 46px; text-align: center; }
 .ev-dates input { background: var(--page); border: 1px solid var(--line); border-radius: 5px; padding: 5px 8px; color-scheme: dark; }
 .ev-sub { margin: 8px 14px 10px; color: var(--muted); font-size: 12.5px; }
 /* Year-End */
+.ye-tabs { display: flex; gap: 26px; border-bottom: 1px solid var(--line); }
+.ye-tabs a { padding: 0 0 10px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 700 20px/1 var(--f-cond); text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.ye-tabs a:hover { color: var(--ink); }
+.ye-tabs a[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--dot-yellow); }
 .ye-nav { display: flex; align-items: center; justify-content: center; gap: 22px; }
 .ye-nav h2 { font: 700 64px/1 var(--f-cond); margin: 0; }
 .ye-nav a, .ye-nav span.off { font: 700 22px var(--f-cond); color: var(--muted); padding: 6px 10px; }
@@ -328,7 +332,6 @@ body.on-ask .ask-fab { display: none; }
       <a href="#/chart" data-nav="chart">Charts</a>
       <a href="#/artists" data-nav="artists">Artists</a>
       <a href="#/songs" data-nav="songs">Songs</a>
-      <a href="#/history" data-nav="history">History</a>
       <a href="#/year-end" data-nav="year-end">Year-End</a>
     </nav>
   </div>
@@ -1023,9 +1026,9 @@ function renderHistory(kind) {
     return `<button class="mtile" data-mi="${ms.indexOf(m)}" aria-label="${monthName(m.key)}: top 10 ${songs ? 'songs' : 'artists'}"><span class="mpic"><b>${monthName(m.key, { month: 'short' })}</b>${pic}</span>
       <span class="mt"><strong>${esc(songs ? song(m.song) : aname(m.art))}</strong><span>${sub}</span><em>${plural(n(m), 'play')}${now ? ' so far' : ''}</em><span class="mtop">Top 10 ${songs ? 'songs' : 'artists'} &rarr;</span></span></button>`;
   };
-  $('page').innerHTML = `<dialog id="mo-pop" class="pop"></dialog><div class="ctitle"><h1>History</h1><p>The most played ${songs ? 'song' : 'artist'} of every month, ${monthName(ms[0].key)} to ${monthName(ms[ms.length - 1].key)}</p></div>
+  $('page').innerHTML = `<dialog id="mo-pop" class="pop"></dialog><div class="ctitle"><h1>All Time</h1><p>The most played ${songs ? 'song' : 'artist'} of every month, ${monthName(ms[0].key)} to ${monthName(ms[ms.length - 1].key)}</p></div>
     <div class="controls"><div class="seg" role="group" aria-label="Songs or artists">
-      <button onclick="location.hash='#/history'" aria-pressed="${songs}">Songs</button><button onclick="location.hash='#/history/artists'" aria-pressed="${!songs}">Artists</button></div></div>
+      <button onclick="location.hash='#/year-end/all-time'" aria-pressed="${songs}">Songs</button><button onclick="location.hash='#/year-end/all-time/artists'" aria-pressed="${!songs}">Artists</button></div></div>
     <div class="card"><div class="bars"><h3>#1 ${songs ? 'song' : 'artist'}'s plays each month</h3><svg viewBox="0 0 ${w} ${h + 18}" role="img" aria-label="Plays for each month's #1">
       <line class="grid" x1="0" x2="${w}" y1="${h + .5}" y2="${h + .5}"/>${bars}${ticks}<text class="ax" x="${w}" y="10" text-anchor="end">record: ${num(max)}</text></svg>
       <p class="legend"><i></i>Record month: ${esc(label(record))}, ${monthName(record.key)}</p></div></div>
@@ -1248,6 +1251,11 @@ function yeData(sp) {
   YE_CACHE.set(sp.id, r);
   return r;
 }
+// Year-End and All Time (the month-by-month history) share one page with two tabs
+function yeTabs(all) {
+  const id = all ? null : (location.hash.split('/')[2] || '');
+  $('page').insertAdjacentHTML('afterbegin', `<div class="ye-tabs" role="tablist"><a role="tab" href="#/year-end${id && id !== 'all-time' ? '/' + id : ''}" aria-selected="${!all}">Year-End</a><a role="tab" href="#/year-end/all-time" aria-selected="${all}">All Time</a></div>`);
+}
 function renderYearEnd(id, kind) {
   const spans = yeSpans(), years = spans.filter(s => !s.decade);
   if (!spans.length) { $('page').innerHTML = '<p class="empty">The first Year-End chart arrives after the first full year of plays.</p>'; return; }
@@ -1294,14 +1302,15 @@ function route() {
   $('view-home').hidden = view !== '';
   $('view-chart').hidden = view !== 'chart';
   $('view-page').hidden = !page;
-  const nav = view === 'artist' ? 'artists' : view === 'song' ? 'songs' : view || 'home';
+  const nav = view === 'artist' ? 'artists' : view === 'song' ? 'songs' : view === 'history' ? 'year-end' : view || 'home';
   for (const el of document.querySelectorAll('[data-nav]')) { if (el.dataset.nav === nav) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current'); }
   if (view === 'chart') { state.kind = arg === 'artists' ? 'artists' : 'songs'; renderChart(); }
   else if (view === 'artists') renderArtists();
   else if (view === 'songs') renderSongs();
-  else if (view === 'year-end') renderYearEnd(arg, location.hash.split('/')[3]);
+  else if (view === 'year-end' && arg === 'all-time') { renderHistory(location.hash.split('/')[3] === 'artists' ? 'artists' : 'songs'); yeTabs(true); }
+  else if (view === 'year-end') { renderYearEnd(arg, location.hash.split('/')[3]); yeTabs(false); }
   else if (view === 'ask') renderAsk(decodeURIComponent(location.hash.slice(6)));
-  else if (view === 'history') renderHistory(arg === 'artists' ? 'artists' : 'songs');
+  else if (view === 'history') { location.replace(`#/year-end/all-time${arg === 'artists' ? '/artists' : ''}`); return; }
   else if (view === 'artist' && DATA.artists[+arg] != null) { renderArtist(+arg); renderArtistSongs(+arg); hookArtistSongs(+arg); hookWeeks(+arg); }
   else if (view === 'song' && DATA.songs[+arg]) { renderSong(+arg); hookWeeks(); }
   if (playing != null) markPlaying(playing);
