@@ -1610,7 +1610,8 @@ function chartMovie(el, opt = {}) {
   const SPEEDS = { week: year
       ? '<option value="0.25">1 week / 4 sec</option><option value="0.333" selected>1 week / 3 sec</option><option value="0.5">1 week / 2 sec</option>'
       : '<option value="1">1 week/sec</option><option value="2" selected>2 weeks/sec</option><option value="4">4 weeks/sec</option><option value="8">8 weeks/sec</option>',
-    month: '<option value="0.5">1 month / 2 sec</option><option value="1" selected>1 month/sec</option><option value="2">2 months/sec</option><option value="4">4 months/sec</option>' };
+    // A month takes 3 seconds by default, never faster than 2 (Will)
+    month: '<option value="0.25">1 month / 4 sec</option><option value="0.333" selected>1 month / 3 sec</option><option value="0.5">1 month / 2 sec</option>' };
   el.innerHTML = `<div class="cmv${year ? ' ye' : ''}"><div class="stage"><svg></svg><div class="date"><small></small><b></b></div><div class="tally"><div class="tl"><small class="l1"></small><b class="n1">0</b></div><div class="tl"><small class="l5"></small><b class="n5">0</b></div></div><div class="sum" hidden></div></div>
     <div class="ctl"><button class="play">▶ Play</button><button class="restart" title="Start over">⟲</button>
       <input type="range" min="0" step="0.01" aria-label="Timeline">
