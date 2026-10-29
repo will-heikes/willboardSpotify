@@ -1683,14 +1683,18 @@ function cmData(kind, unit = 'week', size = CM_SIZE) {
   }
   return CM_DATA[key] = { W, runs: [...runs.values()].sort((x, y) => x.a - y.a), debut, tops };
 }
-// One act's own top 10: their songs ranked by plays in each period, whatever the main chart did
-function cmOwn(act, unit) {
-  const key = 'own' + act + unit;
+// One act's own top 10: their songs ranked by plays in each period, whatever the main chart did.
+// Cumulative ranks them by all their plays up to the end of each period instead
+function cmOwn(act, unit, cum = false) {
+  const key = (cum ? 'cum' : 'own') + act + unit;
   if (CM_DATA[key]) return CM_DATA[key];
   const W = cmPeriods(unit), runs = new Map(), debut = new Map();
   let prevM = null;
+  const sofar = new Map(), active = [];
   W.forEach((w, i) => {
-    const m = new Map([...total(w.a, w.b)].filter(([x]) => artistOf(x) === act));
+    let m = new Map([...total(w.a, w.b)].filter(([x]) => artistOf(x) === act));
+    active[i] = m.size > 0;
+    if (cum) { for (const [x, n] of m) sofar.set(x, (sofar.get(x) || 0) + n); m = new Map(sofar); }
     const ranked = rank(m, prevM).map(([x]) => x); prevM = m;
     ranked.forEach((x, k) => { if (!debut.has(x)) debut.set(x, [i, k + 1]); });
     ranked.slice(0, 10).forEach((x, k) => {
@@ -1706,7 +1710,7 @@ function cmOwn(act, unit) {
     r.first5 = r.a + r.p.findIndex(p => p && p <= 5); if (r.first5 < r.a) r.first5 = Infinity;
     r.first10 = r.a + r.p.findIndex(p => p && p <= 10); if (r.first10 < r.a) r.first10 = Infinity;
   }
-  return CM_DATA[key] = { W, runs: [...runs.values()].sort((x, y) => x.a - y.a), debut, tops: [] };
+  return CM_DATA[key] = { W, runs: [...runs.values()].sort((x, y) => x.a - y.a), debut, tops: [], active };
 }
 let CM = null;
 function stopChartMovie() { if (CM) { CM.stop(); CM = null; } }
@@ -1728,7 +1732,7 @@ function chartMovie(el, opt = {}) {
   // their own rank on the artists chart, week by week, month by month or year by year
   // "Their top 10" (own) ranks just the act's songs against each other, period by period
   const sp = opt.span, year = sp ? sp.id : null, act = opt.artist ?? null;
-  let own = false, SZ = act != null ? 40 : CM_SIZE, HI = SZ >= 40 ? 10 : 5;
+  let own = false, cum = false, SZ = act != null ? 40 : CM_SIZE, HI = SZ >= 40 ? 10 : 5;
   let kind = opt.kind === 'artists' ? 'artists' : 'songs', unit = opt.units ? 'month' : 'week';
   const SPEEDS = act != null ? {
       // An artist page runs a week a second by default; years go much slower (Will)
@@ -1744,7 +1748,7 @@ function chartMovie(el, opt = {}) {
     ? '<option value="week" selected>Week by week</option><option value="month">Month by month</option><option value="year">Year by year</option>'
     : '<option value="month" selected>Month by month</option><option value="week">Week by week</option>';
   const whichOpts = act != null
-    ? '<option value="songs" selected>Their songs</option><option value="own">Their top 10</option><option value="artists">Artist rank</option>'
+    ? '<option value="songs" selected>Their songs</option><option value="own">Their top 10</option><option value="cum">Their top 10, all-time</option><option value="artists">Artist rank</option>'
     : `<option value="songs"${kind === 'songs' ? ' selected' : ''}>Top 10 songs</option><option value="artists"${kind === 'artists' ? ' selected' : ''}>Top 10 artists</option>`;
   el.innerHTML = `<div class="cmv${year || act != null ? ' ye' : ''}"><div class="stage"><svg></svg><div class="date"><small></small><b></b></div><div class="tally"><div class="tl"><small class="l1"></small><b class="n1">0</b></div><div class="tl"><small class="l5"></small><b class="n5">0</b></div></div><div class="sum" hidden></div></div>
     <div class="ctl"><button class="play">▶ Play</button><button class="restart" title="Start over">⟲</button>
@@ -1771,9 +1775,9 @@ function chartMovie(el, opt = {}) {
   let heard = {}, cur = { id: null, a: null };
 
   function load(k) {
-    own = k === 'own'; kind = own ? 'songs' : k;
+    cum = k === 'cum'; own = k === 'own' || cum; kind = own ? 'songs' : k;
     SZ = own ? 10 : act != null ? 40 : CM_SIZE; HI = SZ >= 40 ? 10 : 5;
-    D = own ? cmOwn(act, unit) : cmData(kind, unit, SZ); W = D.W;
+    D = own ? cmOwn(act, unit, cum) : cmData(kind, unit, SZ); W = D.W;
     if (year) {
       first = W.findIndex(w => w.d - 1 >= sp.a); last = W.findLastIndex(w => w.d - 1 <= sp.b);
       runs = D.runs.filter(r => r.b >= first && r.a <= last && r.p.some((p, j) => p && r.a + j >= first && r.a + j <= last));
@@ -1893,7 +1897,7 @@ function chartMovie(el, opt = {}) {
     svg.innerHTML = g;
     const wi = Math.min(i0, last);
     root.querySelector('.date b').textContent = W[wi].lab;
-    root.querySelector('.date small').textContent = `${own ? `Their ${U().adj.toLowerCase()} top 10` : `${U().adj} top ${SZ}${songsK() ? '' : ' artists'}`}${unit === 'week' ? ' · week of' : ''}`;
+    root.querySelector('.date small').textContent = `${cum ? 'Their all-time top 10 · as of' : own ? `Their ${U().adj.toLowerCase()} top 10` : `${U().adj} top ${SZ}${songsK() ? '' : ' artists'}`}${unit === 'week' && !cum ? ' · week of' : ''}`;
     // Running totals of what has reached #1 and the top 5 so far (from the start of the year on a year)
     const upTo = Math.min(last, f < .5 ? i0 : i0 + 1);
     let n1 = 0, n5 = 0;
@@ -1983,7 +1987,8 @@ function chartMovie(el, opt = {}) {
     // The first frame can carry a time from just before play was pressed
     const dt = Math.max(0, Math.min(.1, (ts - prev) / 1000)); prev = ts;
     // A career skips ahead through stretches with none of the act's songs on the chart
-    const busy = act == null || runs.some(r => pos(r, Math.floor(t)) || pos(r, Math.floor(t) + 1));
+    // (all-time standings never leave the chart, so there a stretch with no plays counts as empty)
+    const i = Math.floor(t), busy = act == null || (cum ? D.active[i] || D.active[i + 1] : runs.some(r => pos(r, i) || pos(r, i + 1)));
     if (t < last) t = Math.min(last, t + dt * +root.querySelector('.speed').value * (busy ? 1 : 12));
     else { pause(); return summary(); }
     draw();
@@ -2069,7 +2074,7 @@ function chartMovie(el, opt = {}) {
         ? `<div class="hl ties">${songArt(ties[0].id, '')}<span><small>Highest debut · ${ties.length} at #${ties[0].dp}</small>${ties.slice(0, 4).map(x => `<a href="#/song/${x.id}">${esc(song(x.id))}</a>`).join('')}${ties.length > 4 ? `<em>and ${ties.length - 4} more</em>` : ''}</span></div>`
         : row('Highest debut', ties[0], ties[0] ? `Entered at #${ties[0].dp} · ${W[ties[0].di].lab}` : ''));
     const yrs = [dayStr(W[Math.min(...runs.map(r => r.a))].d).slice(0, 4), dayStr(W[Math.max(...runs.map(r => r.b))].d).slice(0, 4)];
-    sumEl.innerHTML = `<div class="sum-in"><div class="sum-h"><small>${own ? `Their ${u.adj.toLowerCase()} top 10` : `${u.adj} top 40`} · ${yrs[0] === yrs[1] ? yrs[0] : `${yrs[0]}–${yrs[1]}`}</small><b>${esc(aname(act))}</b></div>
+    sumEl.innerHTML = `<div class="sum-in"><div class="sum-h"><small>${cum ? 'Their all-time top 10' : own ? `Their ${u.adj.toLowerCase()} top 10` : `${u.adj} top 40`} · ${yrs[0] === yrs[1] ? yrs[0] : `${yrs[0]}–${yrs[1]}`}</small><b>${esc(aname(act))}</b></div>
       <div class="nums">${nums}</div><div class="hls">${hls}</div>
       ${top.length ? `<div class="ones"><small>Every #1</small>${top.sort((a, b) => a.first1 - b.first1).map(x => `<a href="#/song/${x.id}" style="--c:${color.get(x.id)}">${esc(song(x.id))}<i>${x.n1}</i></a>`).join('')}</div>` : ''}
       <button class="again">⟲ Watch again</button></div>`;
