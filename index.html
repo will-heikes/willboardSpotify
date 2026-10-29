@@ -89,7 +89,9 @@ main { padding: 28px 0 48px; display: grid; gap: 30px; }
 .sec-head h2 { font: 700 30px/1 var(--f-cond); text-transform: uppercase; margin: 0; letter-spacing: .01em; }
 .link { background: none; border: 0; padding: 0 0 3px; cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; border-bottom: 2px solid var(--key); }
 .link:hover { color: var(--key-ink); }
-.recent-sec { margin-top: 22px; }
+.artist-sec { margin-top: 22px; }
+/* Recently played runs down beside Top Songs and Top Artist, as many plays as fit (fitRecent) */
+@media (min-width: 861px) { #home-recent-card { overflow: hidden; } }
 table.recent td.when { text-align: right; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 table.recent tr.day td { text-align: left; background: var(--card-2); color: var(--ink-soft); font: 700 12px/1 var(--f-body); text-transform: uppercase; letter-spacing: .06em; padding: 9px 14px; }
 .home-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 22px; align-items: start; }
@@ -444,20 +446,20 @@ body.on-ask .ask-fab { display: none; }
     <p class="through" id="through"></p>
     <main>
       <div class="home-grid">
+        <div id="home-left">
         <section>
           <div class="sec-head"><h2>Top Songs</h2><a class="link" href="#/chart">Full chart &rarr;</a></div>
           <div class="card" id="home-songs-card"><table id="home-songs"></table></div>
         </section>
-        <div>
-        <section>
+        <section class="artist-sec">
           <div class="sec-head"><h2>Top Artist</h2><a class="link" href="#/chart/artists">Artist chart &rarr;</a></div>
           <div class="card" id="home-artist-card"></div>
         </section>
+        </div>
         <section class="recent-sec">
           <div class="sec-head"><h2>Recently Played</h2><a class="link" href="#/recent">More &rarr;</a></div>
-          <div class="card"><table class="recent" id="home-recent"></table></div>
+          <div class="card" id="home-recent-card"><table class="recent" id="home-recent"></table></div>
         </section>
-        </div>
       </div>
       <section id="article"></section>
     </main>
@@ -651,6 +653,19 @@ function recentRows(n, grouped) {
     return head + `<tr>${songCell(s)}<td class="when">${grouped ? playTime(u) : `${dayLabel(d)}<br>${playTime(u)}`}</td></tr>`;
   }).join('');
 }
+// Beside the two left-hand cards, keep only the plays that fit whole; on a phone, show ten
+function fitRecent() {
+  const card = $('home-recent-card');
+  if (!card || $('view-home').hidden) return;
+  $('home-recent').innerHTML = `<tbody>${recentRows(innerWidth > 860 ? Infinity : 10)}</tbody>`;
+  card.style.height = '';
+  if (innerWidth <= 860) return;
+  // Ends level with the Top Artist card
+  const bottom = $('home-left').getBoundingClientRect().bottom;
+  card.style.height = `${bottom - card.getBoundingClientRect().top}px`;
+  for (const tr of [...card.querySelectorAll('tr')].reverse()) if (tr.getBoundingClientRect().bottom > bottom + 1) tr.remove(); else break;
+}
+addEventListener('resize', () => { clearTimeout(fitRecent.t); fitRecent.t = setTimeout(fitRecent, 150); });
 function renderRecent() {
   $('page').innerHTML = `<div class="ph"><div><div class="kicker"><i></i>Your listening</div><h1>Recently Played</h1>
       <p class="sub">Your last ${(DATA.recent || []).length} plays of 30 seconds or more, newest first, with the time each one finished (Mountain time). Updated every hour.</p></div></div>
@@ -663,7 +678,8 @@ function renderHome() {
 
   const [a1, v1] = wkArtRank[0], prevA = new Map(pwArtRank.map(([a], i) => [a, i + 1]));
   const ast = streak(ROLLA, a1), aever = daysAtOne(ROLLA, a1);
-  $('home-recent').innerHTML = `<tbody>${recentRows(8)}</tbody>`;
+  $('home-recent').innerHTML = `<tbody>${recentRows(innerWidth > 860 ? Infinity : 10)}</tbody>`;
+  requestAnimationFrame(fitRecent);
   $('home-artist-card').innerHTML = `<div class="artist-top"><div class="kicker"><i></i>No. 1 artist · last 7 days</div>
       <h3><a href="#/artist/${a1}">${esc(aname(a1))}</a></h3><p>Led by ${esc(song(v1.top))}, ${plural(v1.topN, 'play')}</p>
       <div class="stats"><div><b>${num(v1.n)}</b><small>Plays</small></div><div><b>${v1.songs}</b><small>Songs played</small></div><div><b>${num(ast)}</b><small>${ast === 1 ? 'Day' : 'Days'} at #1${aever > ast ? ` · ${num(aever)} total` : ''}</small></div></div></div>
