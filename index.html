@@ -1559,7 +1559,7 @@ function cmData(kind, unit = 'week') {
   const key = kind + unit;
   if (CM_DATA[key]) return CM_DATA[key];
   const W = cmPeriods(unit), runs = new Map(), debut = new Map(), tops = [];
-  let prevAt = null, prevM = null;
+  let prevAt = null, prevM = null, prevOne = null;
   W.forEach((w, i) => {
     let ranked;
     if (kind === 'songs') {
@@ -1568,9 +1568,10 @@ function cmData(kind, unit = 'week') {
     } else {
       const at = artistTotals(total(w.a, w.b));
       ranked = rankArtists(at, prevAt).map(([a]) => a);
-      // An artist plays their top song of the period. Month by month, a run of consecutive months in the
-      // top 10 keeps the song it started with; a return after a gap takes that month's top song (Will)
-      tops[i] = new Map(ranked.slice(0, CM_SIZE).map(a => [a, unit === 'month' && tops[i - 1]?.has(a) ? tops[i - 1].get(a) : at.get(a).top]));
+      // An artist plays their top song of the period. Month by month, the one exception is a run of
+      // consecutive months at No. 1, which keeps the song the run started with (Will)
+      tops[i] = new Map(ranked.slice(0, CM_SIZE).map((a, k) => [a, unit === 'month' && k === 0 && prevOne === a ? tops[i - 1].get(a) : at.get(a).top]));
+      prevOne = ranked[0];
       prevAt = at;
     }
     ranked.forEach((x, k) => { if (!debut.has(x)) debut.set(x, [i, k + 1]); });
