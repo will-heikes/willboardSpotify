@@ -349,6 +349,7 @@ body.on-ask .ask-fab { display: none; }
 .cmv .head span { font: 700 12px var(--f-body); color: var(--ink); background: color-mix(in srgb, var(--card) 85%, transparent); padding: 1px 5px; border-radius: 3px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .cmv .head i { font: 700 12px/1 var(--f-body); font-style: normal; color: #0A111C; background: var(--c); min-width: 22px; text-align: center; padding: 3px 4px; border-radius: 3px; font-variant-numeric: tabular-nums; }
 .cmv .head i::before { content: '#'; opacity: .7; font-size: 10px; }
+.cmv .head em.pl { background: var(--card-2); color: var(--ink-soft); }
 .cmv .head em { font: 700 10.5px var(--f-body); font-style: normal; color: #111; background: var(--key); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 .cmv.ye .head .art { width: 20px; height: 20px; font-size: 8px; }
 .cmv.ye .head span { font-size: 11px; max-width: 160px; }
@@ -1690,17 +1691,17 @@ function cmOwn(act, unit, cum = false) {
   if (CM_DATA[key]) return CM_DATA[key];
   const W = cmPeriods(unit), runs = new Map(), debut = new Map();
   let prevM = null;
-  const sofar = new Map(), active = [];
+  const sofar = new Map(), active = [], tot = [];
   W.forEach((w, i) => {
     let m = new Map([...total(w.a, w.b)].filter(([x]) => artistOf(x) === act));
     active[i] = m.size > 0;
-    if (cum) { for (const [x, n] of m) sofar.set(x, (sofar.get(x) || 0) + n); m = new Map(sofar); }
+    if (cum) { for (const [x, n] of m) sofar.set(x, (sofar.get(x) || 0) + n); m = new Map(sofar); tot[i] = [sum(m), m.size]; }
     const ranked = rank(m, prevM).map(([x]) => x); prevM = m;
     ranked.forEach((x, k) => { if (!debut.has(x)) debut.set(x, [i, k + 1]); });
     ranked.slice(0, 10).forEach((x, k) => {
       let r = runs.get(x);
-      if (!r) runs.set(x, r = { id: x, a: i, p: [] });
-      r.p[i - r.a] = k + 1;
+      if (!r) runs.set(x, r = { id: x, a: i, p: [], v: [] });
+      r.p[i - r.a] = k + 1; r.v[i - r.a] = m.get(x);
     });
   });
   for (const r of runs.values()) {
@@ -1710,7 +1711,7 @@ function cmOwn(act, unit, cum = false) {
     r.first5 = r.a + r.p.findIndex(p => p && p <= 5); if (r.first5 < r.a) r.first5 = Infinity;
     r.first10 = r.a + r.p.findIndex(p => p && p <= 10); if (r.first10 < r.a) r.first10 = Infinity;
   }
-  return CM_DATA[key] = { W, runs: [...runs.values()].sort((x, y) => x.a - y.a), debut, tops: [], active };
+  return CM_DATA[key] = { W, runs: [...runs.values()].sort((x, y) => x.a - y.a), debut, tops: [], active, tot };
 }
 let CM = null;
 function stopChartMovie() { if (CM) { CM.stop(); CM = null; } }
@@ -1798,8 +1799,8 @@ function chartMovie(el, opt = {}) {
     range.min = first; range.max = last; range.value = t;
     for (const h of heads.values()) h.remove();
     heads = new Map();
-    root.querySelector('.l1').textContent = solo() ? `${U().many} at #1` : songsK() ? '#1 songs' : '#1 artists';
-    root.querySelector('.l5').textContent = solo() ? `${U().many} in the top ${HI}` : `Top ${HI}`;
+    root.querySelector('.l1').textContent = cum ? 'Total plays' : solo() ? `${U().many} at #1` : songsK() ? '#1 songs' : '#1 artists';
+    root.querySelector('.l5').textContent = cum ? 'Songs played' : solo() ? `${U().many} in the top ${HI}` : `Top ${HI}`;
     for (const b of root.querySelectorAll('.tally b')) b.textContent = '0';
     draw();
   }
@@ -1886,8 +1887,12 @@ function chartMovie(el, opt = {}) {
         const pb = h.querySelector('i'), shown = String(cp);
         if (pb.textContent !== shown) pb.textContent = shown;
         const em = h.querySelector('em');
-        em.hidden = p0 !== 1;
-        if (p0 === 1) { let n1 = 0; for (let i = xs.a; i <= i0; i++) if (pos(xs, i) === 1) n1++; em.textContent = `#1 · ${n1} ${U().ab}${n1 === 1 ? '' : 's'}`; }
+        // All-time standings carry each song's running play count, counting up between periods
+        if (cum) {
+          const v0 = xs.v[i0 - xs.a] || 0, v1 = i0 < last ? xs.v[i0 + 1 - xs.a] || v0 : v0, v = Math.round(v0 + (v1 - v0) * f);
+          em.hidden = false; em.className = 'pl'; const tx = plural(v, 'play'); if (em.textContent !== tx) em.textContent = tx;
+        } else em.hidden = p0 !== 1;
+        if (!cum && p0 === 1) { let n1 = 0; for (let i = xs.a; i <= i0; i++) if (pos(xs, i) === 1) n1++; em.textContent = `#1 · ${n1} ${U().ab}${n1 === 1 ? '' : 's'}`; }
       }
       if (d) g += `<path d="${d}" fill="none" stroke="${color.get(xs.id)}" stroke-width="${p0 || p1 ? 3 : 2}" stroke-opacity="${p0 || p1 ? 1 : .35}" stroke-linejoin="round" stroke-linecap="round"/>`;
     }
@@ -1910,12 +1915,14 @@ function chartMovie(el, opt = {}) {
       const fh = HI === 10 ? xs.first10 : xs.first5;
       if (fh <= upTo && (fh >= from || xs.p.some((p, j) => p && p <= HI && xs.a + j >= from && xs.a + j <= upTo))) n5++;
     }
+    // All-time standings: the act's running total of plays and songs played instead
+    if (cum) { const tt = D.tot[Math.min(i0, last)] || [0, 0], tn = D.tot[Math.min(i0 + 1, last)] || tt; n1 = Math.round(tt[0] + (tn[0] - tt[0]) * f); n5 = f < .5 ? tt[1] : tn[1]; }
     for (const [sel, n] of [['.n1', n1], ['.n5', n5]]) {
       const b = root.querySelector('.tally ' + sel);
-      if (b.textContent !== String(n)) {
-        const up = n > +b.textContent;
-        b.textContent = n;
-        if (up && run) { b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+      if (b.textContent !== num(n)) {
+        const up = n > +b.textContent.replace(/,/g, '');
+        b.textContent = num(n);
+        if (up && run && !cum) { b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
       }
     }
     range.value = t;
