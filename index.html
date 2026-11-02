@@ -124,6 +124,10 @@ td.dim { color: var(--muted); }
 .artist-top .kicker { font-size: 11px; color: var(--muted); }
 .artist-top h3 { font: 700 38px/1 var(--f-cond); text-transform: uppercase; margin: 12px 0 6px; overflow-wrap: anywhere; }
 .artist-top p { margin: 0; color: var(--ink-soft); }
+.at-head { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
+.at-head .art { width: 96px; height: 96px; font-size: 30px; border-radius: 4px; }
+.at-head h3 { margin-top: 0 !important; }
+@media (max-width: 640px) { .at-head .art { width: 72px; height: 72px; } }
 .artist-top .stats { border-top-color: var(--line); margin-top: 16px; }
 .artist-top .stats div { padding-right: 14px; margin-right: 14px; }
 .artist-top .stats b { font-size: 26px; }
@@ -676,7 +680,11 @@ function fitRecent() {
   card.style.height = `${bottom - card.getBoundingClientRect().top}px`;
   for (const tr of [...card.querySelectorAll('tr')].reverse()) if (tr.getBoundingClientRect().bottom > bottom + 1) tr.remove(); else break;
 }
-addEventListener('resize', () => { clearTimeout(fitRecent.t); fitRecent.t = setTimeout(fitRecent, 150); });
+const refit = () => { clearTimeout(fitRecent.t); fitRecent.t = setTimeout(fitRecent, 150); };
+addEventListener('resize', refit);
+// Fonts and pictures change the left side's height after the first fit, so fit again once they land
+document.fonts?.ready.then(refit);
+addEventListener('load', e => { if (e.target.tagName === 'IMG' && e.target.closest('#home-left')) refit(); }, true);
 function renderRecent() {
   $('page').innerHTML = `<div class="ph"><div><div class="kicker"><i></i>Your listening</div><h1>Recently Played</h1>
       <p class="sub">Your last ${(DATA.recent || []).length} plays of 30 seconds or more, newest first, with the time each one finished (Mountain time). Updated every hour.</p></div></div>
@@ -692,7 +700,7 @@ function renderHome() {
   $('home-recent').innerHTML = `<tbody>${recentRows(innerWidth > 860 ? Infinity : 10)}</tbody>`;
   requestAnimationFrame(fitRecent);
   $('home-artist-card').innerHTML = `<div class="artist-top"><div class="kicker"><i></i>No. 1 artist · last 7 days</div>
-      <h3><a href="#/artist/${a1}">${esc(aname(a1))}</a></h3><p>Led by ${esc(song(v1.top))}, ${plural(v1.topN, 'play')}</p>
+      <div class="at-head"><a href="#/artist/${a1}" tabindex="-1" aria-hidden="true">${artistArt(a1, '')}</a><div><h3><a href="#/artist/${a1}">${esc(aname(a1))}</a></h3><p>Led by ${esc(song(v1.top))}, ${plural(v1.topN, 'play')}</p></div></div>
       <div class="stats"><div><b>${num(v1.n)}</b><small>Plays</small></div><div><b>${v1.songs}</b><small>Songs played</small></div><div><b>${num(ast)}</b><small>${ast === 1 ? 'Day' : 'Days'} at #1${aever > ast ? ` · ${num(aever)} total` : ''}</small></div></div></div>
     <table><tbody>${wkArtRank.slice(1, 6).map(([a, v], i) => `<tr><td class="rk">${i + 2}</td><td class="mv">${moveCell(i + 2, prevA.get(a), AFIRST.get(a), W[0], 10)}</td>${artistCell(a, plural(v.songs, 'song'))}<td class="pl">${num(v.n)}</td></tr>`).join('')}</tbody></table>`;
 }
