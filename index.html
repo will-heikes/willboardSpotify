@@ -147,7 +147,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .controls label { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: grid; gap: 4px; }
 .controls input, .controls select { background: var(--page); border: 1px solid var(--line); border-radius: 5px; padding: 6px 9px; color-scheme: light; }
 .spacer { flex: 1; }
-.ctitle { display: grid; gap: 3px; }
+.ctitle { display: grid; gap: 3px; min-width: 0; }
 .ctitle h1 { font: 700 34px/1.05 var(--f-cond); text-transform: uppercase; margin: 0; text-wrap: balance; }
 .ctitle p { margin: 0; color: var(--muted); }
 .foot { color: var(--muted); font-size: 12px; max-width: 75ch; margin: 0; }
@@ -213,6 +213,15 @@ td.pb { width: 46px; text-align: center; }
 .ev-sub { margin: 8px 14px 10px; color: var(--muted); font-size: 12.5px; }
 /* Year-End */
 .ye-tabs { display: flex; gap: 26px; border-bottom: 1px solid var(--line); }
+.rec-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+.rec-jump a { font-size: 12.5px; font-weight: 600; padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-soft); }
+.rec-jump a:hover { color: var(--ink); border-color: var(--ink-soft); }
+.rec-sec { min-width: 0; margin-top: 30px; scroll-margin-top: 80px; }
+.rec-sec > p { margin: -4px 0 12px; color: var(--muted); font-size: 13.5px; }
+.rec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+.rec-grid h3 { font: 700 18px/1 var(--f-cond); text-transform: uppercase; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--card-2); }
+td.l { text-align: left; }
+td.yr { font: 700 20px/1 var(--f-cond); text-align: left; width: 58px; }
 .ye-tabs a { padding: 0 0 10px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 700 20px/1 var(--f-cond); text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
 .ye-tabs a:hover { color: var(--ink); }
 .ye-tabs a[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--key); }
@@ -1597,9 +1606,67 @@ function yeData(sp) {
   return r;
 }
 // Year-End and All Time (the month-by-month history) share one page with two tabs
+// Records: modeled on Wikipedia's list of Spotify streaming records, from every play of 30 seconds or more
+let RECS = null;
+function records() {
+  if (RECS) return RECS;
+  const days = [], cum = new Map(), MARKS = [50, 100, 250], fast = MARKS.map(() => []);
+  const bestDay = new Map(), bestWeek = new Map(), win = new Map();
+  for (let d = 0; d <= END; d++) {
+    const row = DATA.days[d]; let t = 0;
+    for (let i = 0; i < row.length; i += 2) {
+      const x = row[i], n = row[i + 1], c0 = cum.get(x) || 0, c = c0 + n; t += n;
+      cum.set(x, c); win.set(x, (win.get(x) || 0) + n);
+      if (n > (bestDay.get(x)?.n || 0)) bestDay.set(x, { n, d });
+      MARKS.forEach((m, k) => { if (c0 < m && c >= m) fast[k].push({ s: x, days: d - FIRST.get(x) + 1, d }); });
+    }
+    if (d >= 7) { const old = DATA.days[d - 7]; for (let i = 0; i < old.length; i += 2) { const v = win.get(old[i]) - old[i + 1]; if (v) win.set(old[i], v); else win.delete(old[i]); } }
+    for (let i = 0; i < row.length; i += 2) { const x = row[i], n = win.get(x); if (n > (bestWeek.get(x)?.n || 0)) bestWeek.set(x, { n, d }); }
+    days.push({ d, n: t });
+  }
+  const top = (m, k = 15) => [...m].sort((a, b) => b[1].n - a[1].n || a[1].d - b[1].d).slice(0, k);
+  const art = ALL_ART(), big = new Map();
+  for (const [x, n] of ALL) if (n >= 100) { const a = artistOf(x); big.set(a, (big.get(a) || 0) + 1); }
+  const atOne = new Map(); for (let d = 0; d <= END; d++) if (ROLL1[d] >= 0) atOne.set(ROLL1[d], (atOne.get(ROLL1[d]) || 0) + 1);
+  const aOne = new Map(); for (let d = 0; d <= END; d++) if (ROLLA[d] >= 0) aOne.set(ROLLA[d], (aOne.get(ROLLA[d]) || 0) + 1);
+  const years = [];
+  for (let y = +DATA.start.slice(0, 4); y <= +DATA.end.slice(0, 4); y++) {
+    const a = Math.max(0, dayIx(`${y}-01-01`)), b = Math.min(END, dayIx(`${y}-12-31`)), m = total(a, b);
+    if (!m.size) continue;
+    const [s1, n1] = rank(m)[0], [a1, v1] = rankArtists(artistTotals(m))[0];
+    years.push({ y, s1, n1, a1, an: v1.n, all: sum(m), part: a > dayIx(`${y}-01-01`) || b < dayIx(`${y}-12-31`) });
+  }
+  return RECS = { songs: rank(ALL).slice(0, 25), artists: rankArtists(art).slice(0, 25), bestDay: top(bestDay), bestWeek: top(bestWeek),
+    busiest: days.sort((a, b) => b.n - a.n || a.d - b.d).slice(0, 10), MARKS, fast: fast.map(f => f.sort((a, b) => a.days - b.days || a.d - b.d).slice(0, 10)),
+    big: [...big].sort((a, b) => b[1] - a[1] || (art.get(b[0]).n - art.get(a[0]).n)).slice(0, 15),
+    atOne: [...atOne].sort((a, b) => b[1] - a[1]).slice(0, 15), aOne: [...aOne].sort((a, b) => b[1] - a[1]).slice(0, 15), years: years.reverse() };
+}
+function renderRecords() {
+  const R = records();
+  const tbl = (head, rows) => `<div class="card scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const sec = (id, title, note, body) => `<section class="rec-sec" id="rec-${id}"><div class="sec-head"><h2>${title}</h2></div>${note ? `<p>${note}</p>` : ''}${body}</section>`;
+  const mini = (title, head, rows) => `<div class="card"><h3>${title}</h3><div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  const SH = '<th>#</th><th class="l">Song</th>', AH = '<th>#</th><th class="l">Artist</th>';
+  const sRow = (i, x, ...cells) => `<tr><td class="rk">${i + 1}</td>${songCell(x)}${cells.join('')}</tr>`;
+  const aRow = (i, a, ...cells) => `<tr><td class="rk">${i + 1}</td>${artistCell(a, '')}${cells.join('')}</tr>`;
+  const SECS = [
+    ['songs', 'Most-played songs', 'All-time plays since ' + fmt(0) + '.', tbl(SH + '<th>Plays</th><th class="hide-sm">First play</th>', R.songs.map(([x, n], i) => sRow(i, x, `<td class="pl">${num(n)}</td>`, `<td class="dim hide-sm">${fmt(FIRST.get(x))}</td>`)).join(''))],
+    ['artists', 'Most-played artists', 'Songs where the act is the lead artist.', tbl(AH + '<th>Plays</th><th class="hide-sm">Songs</th>', R.artists.map(([a, v], i) => aRow(i, a, `<td class="pl">${num(v.n)}</td>`, `<td class="dim hide-sm">${num(v.songs)}</td>`)).join(''))],
+    ['day', 'Most plays in one day', 'Each song counted once, on its biggest day.', tbl(SH + '<th>Plays</th><th>Date</th>', R.bestDay.map(([x, v], i) => sRow(i, x, `<td class="pl">${num(v.n)}</td>`, `<td class="dim">${fmt(v.d)}</td>`)).join(''))],
+    ['week', 'Most plays in one week', 'Any 7 days in a row. Each song counted once, on its biggest week (the date is the week’s last day).', tbl(SH + '<th>Plays</th><th>Week ending</th>', R.bestWeek.map(([x, v], i) => sRow(i, x, `<td class="pl">${num(v.n)}</td>`, `<td class="dim">${fmt(v.d)}</td>`)).join(''))],
+    ['fastest', 'Fastest to a milestone', 'Days from a song’s first play to its 50th, 100th and 250th.', `<div class="rec-grid">${R.MARKS.map((m, k) => mini(`${m} plays`, SH + '<th>Days</th>', R.fast[k].map((f, i) => sRow(i, f.s, `<td class="pl" title="Reached ${fmt(f.d)}">${num(f.days)}</td>`)).join(''))).join('')}</div>`],
+    ['one', 'Most days at #1', 'Days at the top of the 7-day chart.', `<div class="rec-grid">${mini('Songs', SH + '<th>Days</th>', R.atOne.map(([x, n], i) => sRow(i, x, `<td class="pl">${num(n)}</td>`)).join(''))}${mini('Artists', AH + '<th>Days</th>', R.aOne.map(([a, n], i) => aRow(i, a, `<td class="pl">${num(n)}</td>`)).join(''))}</div>`],
+    ['hundred', 'Most songs with 100 plays', 'Lead-artist songs with at least 100 all-time plays.', tbl(AH + '<th>Songs</th><th class="hide-sm">Total plays</th>', R.big.map(([a, n], i) => aRow(i, a, `<td class="pl">${num(n)}</td>`, `<td class="dim hide-sm">${num(ALL_ART().get(a).n)}</td>`)).join(''))],
+    ['years', 'Top song of every year', 'Calendar years.', tbl('<th class="l">Year</th><th class="l">Song</th><th>Plays</th><th class="l hide-sm">Artist</th><th class="hide-sm">Plays</th>', R.years.map(y => `<tr><td class="yr"><a href="#/year-end/${y.y}">${y.y}</a>${y.part ? '<small class="dim"> *</small>' : ''}</td>${songCell(y.s1)}<td class="pl">${num(y.n1)}</td><td class="l hide-sm"><a href="#/artist/${y.a1}">${esc(aname(y.a1))}</a></td><td class="dim hide-sm">${num(y.an)}</td></tr>`).join('')) + `<p class="dim" style="font-size:12.5px">* Partial year: plays start ${fmt(0)} and run through ${fmt(END)}.</p>`],
+    ['busiest', 'Biggest listening days', 'Every song, all plays that day.', tbl('<th>#</th><th class="l">Date</th><th>Plays</th>', R.busiest.map((x, i) => `<tr><td class="rk">${i + 1}</td><td class="l">${fmt(x.d, { weekday: 'short' })}</td><td class="pl">${num(x.n)}</td></tr>`).join(''))],
+  ];
+  $('page').innerHTML = `<div class="ctitle" style="margin-top:22px"><h1>Records</h1><p>The biggest numbers in your Spotify history, ${fmt(0)} to ${fmt(END)}</p></div>
+    <nav class="rec-jump">${SECS.map(([id, t]) => `<a href="#/records" data-jump="rec-${id}">${t}</a>`).join('')}</nav>${SECS.map(x => sec(...x)).join('')}`;
+  for (const a of $('page').querySelectorAll('[data-jump]')) a.onclick = e => { e.preventDefault(); $(a.dataset.jump).scrollIntoView({ behavior: 'smooth' }); };
+}
 function yeTabs(all) {
   const id = all ? null : (location.hash.split('/')[2] || '');
-  $('page').insertAdjacentHTML('afterbegin', `<div class="ye-tabs" role="tablist"><a role="tab" href="#/year-end${id && id !== 'all-time' ? '/' + id : ''}" aria-selected="${!all}">Year-End</a><a role="tab" href="#/year-end/all-time" aria-selected="${all}">All Time</a></div>`);
+  $('page').insertAdjacentHTML('afterbegin', `<div class="ye-tabs" role="tablist"><a role="tab" href="#/year-end${id && id !== 'all-time' ? '/' + id : ''}" aria-selected="${!all}">Year-End</a><a role="tab" href="#/year-end/all-time" aria-selected="${all === true}">All Time</a><a role="tab" href="#/records" aria-selected="${all === 'records'}">Records</a></div>`);
 }
 function renderYearEnd(id, kind) {
   const spans = yeSpans(), years = spans.filter(s => !s.decade);
@@ -2156,12 +2223,12 @@ const longestRun = ids => { let best = 0, run = 0; ids.forEach((x, i) => { run =
 
 function route() {
   const [, view = '', arg] = location.hash.split('/');
-  const page = ['artists', 'songs', 'artist', 'song', 'history', 'ask', 'year-end', 'beat', 'recent'].includes(view);
+  const page = ['artists', 'songs', 'artist', 'song', 'history', 'ask', 'year-end', 'beat', 'recent', 'records'].includes(view);
   document.body.classList.toggle('on-ask', view === 'ask');
   $('view-home').hidden = view !== '';
   $('view-chart').hidden = view !== 'chart';
   $('view-page').hidden = !page;
-  const nav = view === 'artist' ? 'artists' : view === 'song' ? 'songs' : view === 'history' ? 'year-end' : view === 'beat' || view === 'recent' ? 'home' : view || 'home';
+  const nav = view === 'artist' ? 'artists' : view === 'song' ? 'songs' : view === 'history' || view === 'records' ? 'year-end' : view === 'beat' || view === 'recent' ? 'home' : view || 'home';
   for (const el of document.querySelectorAll('[data-nav]')) { if (el.dataset.nav === nav) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current'); }
   if (view === 'chart') { state.kind = arg === 'artists' ? 'artists' : 'songs'; renderChart(); }
   else if (view === 'artists') renderArtists();
@@ -2170,6 +2237,7 @@ function route() {
   else if (view === 'year-end') { renderYearEnd(arg, location.hash.split('/')[3]); yeTabs(false); }
   else if (view === 'beat') renderStory(+arg || 0);
   else if (view === 'recent') renderRecent();
+  else if (view === 'records') { renderRecords(); yeTabs('records'); }
   else if (view === 'ask') renderAsk(decodeURIComponent(location.hash.slice(6)));
   else if (view === 'history') { location.replace(`#/year-end/all-time${arg === 'artists' ? '/artists' : ''}`); return; }
   else if (view === 'artist' && DATA.artists[+arg] != null) { renderArtist(+arg); renderArtistSongs(+arg); hookArtistSongs(+arg); hookWeeks(+arg); hookMovie({ artist: +arg }); }
