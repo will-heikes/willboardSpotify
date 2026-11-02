@@ -213,13 +213,14 @@ td.pb { width: 46px; text-align: center; }
 .ev-sub { margin: 8px 14px 10px; color: var(--muted); font-size: 12.5px; }
 /* Year-End */
 .ye-tabs { display: flex; gap: 26px; border-bottom: 1px solid var(--line); }
-.rec-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0; }
-.rec-jump b { font: 700 13px/1 var(--f-cond); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); width: 74px; }
-.rec-jump:first-of-type { margin-top: 16px; }
-.rec-group { margin-top: 44px; padding-top: 14px; border-top: 2px solid var(--ink); }
-.rec-group + .rec-sec { margin-top: 10px; }
-.rec-jump a { font-size: 12.5px; font-weight: 600; padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-soft); }
-.rec-jump a:hover { color: var(--ink); border-color: var(--ink-soft); }
+.rec-tabs { margin-top: 18px; }
+.rec-toc { margin: 14px 0 0; font-size: 13.5px; line-height: 1.9; color: var(--muted); }
+.rec-toc a { color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
+tr.pick { cursor: pointer; }
+tr.pick:hover td, tr.pick:focus-visible td { background: var(--card-2); }
+tr.pick td.pl::after { content: ' \203A'; color: var(--muted); font-weight: 400; }
+.rec-toc a:hover { color: var(--ink); text-decoration: underline; }
+.rec-toc span { margin: 0 8px; }
 .rec-sec { min-width: 0; margin-top: 30px; scroll-margin-top: 80px; }
 .rec-sec > p { margin: -4px 0 12px; color: var(--muted); font-size: 13.5px; }
 .rec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
@@ -1654,7 +1655,6 @@ function records() {
     for (const [a, n] of al) if (n > (albDay.get(a)?.n || 0)) albDay.set(a, { n, d });
     days.push({ d, n: t });
   }
-  const HOL = new Set(DATA.tags?.holiday || []), isHol = x => HOL.has(x);
   leader.forEach((r, i) => { r.end = i + 1 < leader.length ? leader[i + 1].d : END; r.held = r.end - r.d + (i + 1 < leader.length ? 0 : 1); });
   // Weekly chart: each week's plays, positions, and the album ranking
   const W7 = [], bestWeek = new Map(), albWeek = new Map(), weekProg = [], albOne = new Map(), albAll = new Map();
@@ -1712,11 +1712,11 @@ function records() {
     if (!m.size) continue;
     const al = new Map(); for (const [x, n] of m) { const k = albumOf(x); if (k >= 0) al.set(k, (al.get(k) || 0) + n); }
     const [a1, v1] = rankArtists(artistTotals(m))[0];
-    years.push({ y, songs: rank(m).slice(0, 5), albums: [...al].sort((p, q) => q[1] - p[1]).slice(0, 5), a1, an: v1.n, part: a > dayIx(`${y}-01-01`) || b < dayIx(`${y}-12-31`) });
+    years.push({ y, songs: rank(m).slice(0, 5), albums: [...al].sort((p, q) => q[1] - p[1]).slice(0, 5), a1, an: v1.n, a, b, part: a > dayIx(`${y}-01-01`) || b < dayIx(`${y}-12-31`) });
   }
   const byMove = (a, b) => (Math.abs(b.from - b.to) - Math.abs(a.from - a.to)) || b.d - a.d;
   return RECS = { songs: rank(ALL).slice(0, 25), artists: rankArtists(art).slice(0, 25),
-    bestDay: top(bestDay, 15, ([x]) => !isHol(x)), holDay: top(bestDay, 10, ([x]) => isHol(x)), bestWeek: top(bestWeek), dayProg: dayProg.reverse(), weekProg: weekProg.reverse(),
+    bestDay: top(bestDay), bestWeek: top(bestWeek), dayProg: dayProg.reverse(), weekProg: weekProg.reverse(),
     leader: leader.filter(r => r.held > 0).reverse(), longestLead: [...leader].filter(r => r.held > 0).sort((a, b) => b.held - a.held).slice(0, 10),
     busiest: days.sort((a, b) => b.n - a.n || a.d - b.d).slice(0, 10), MARKS, fast: fast.map(f => f.sort((a, b) => a.days - b.days || a.d - b.d).slice(0, 10)),
     big: [...big].sort((a, b) => b[1] - a[1] || (art.get(b[0]).n - art.get(a[0]).n)).slice(0, 15),
@@ -1734,7 +1734,7 @@ function albumCell(al) {
   const s = ALBUM_TOP.get(al), a = albumArtist(al);
   return `<td class="who">${art(IMG(DATA.songs[s][3]), albumName(al), '')}<span class="t"><b>${esc(albumName(al))}</b><span><a href="#/artist/${a}">${esc(aname(a))}</a></span></span></td>`;
 }
-function renderRecords() {
+function renderRecords(group) {
   const R = records();
   const yr = d => ({ year: 'numeric' });
   const tbl = (head, rows, more) => `<div class="card scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>${more || ''}`;
@@ -1743,7 +1743,10 @@ function renderRecords() {
   const SH = '<th>#</th><th class="l">Song</th>', AH = '<th>#</th><th class="l">Artist</th>', LH = '<th>#</th><th class="l">Album</th>';
   const sRow = (i, x, ...cells) => `<tr><td class="rk">${i + 1}</td>${songCell(x)}${cells.join('')}</tr>`;
   const aRow = (i, a, ...cells) => `<tr><td class="rk">${i + 1}</td>${artistCell(a, '')}${cells.join('')}</tr>`;
-  const lRow = (i, al, ...cells) => `<tr><td class="rk">${i + 1}</td>${albumCell(al)}${cells.join('')}</tr>`;
+  // Rows that open a list of the songs behind the number (Will, 2026-11-02)
+  const tap = pop => ` class="pick" data-pop="${pop}" tabindex="0" title="See the songs"`;
+  const aRowP = (pop, i, a, ...cells) => `<tr${tap(pop)}><td class="rk">${i + 1}</td>${artistCell(a, '')}${cells.join('')}</tr>`;
+  const lRow = (i, al, ...cells) => `<tr${tap(cells.pop())}><td class="rk">${i + 1}</td>${albumCell(al)}${cells.join('')}</tr>`;
   const pl = n => `<td class="pl">${num(n)}</td>`, dt = d => `<td class="dim">${fmt(d)}</td>`, dtS = d => `<td class="dim hide-sm">${fmt(d)}</td>`;
   const prog = (list, unit) => list.map(r => `<tr><td class="dim l">${fmt(r.d)}</td>${songCell(r.s)}${pl(r.n)}</tr>`).join('');
   const PH = '<th class="l">Set on</th><th class="l">Song</th><th>Plays</th>';
@@ -1756,12 +1759,11 @@ function renderRecords() {
         grid(mini('Longest held', SH + '<th>Days</th>', R.longestLead.map((r, i) => sRow(i, r.s, `<td class="pl">${num(r.held)}<span class="subv">from ${fmt(r.d)}</span></td>`)).join('')),
           mini('Every leader, newest first', '<th class="l">Took the lead</th><th class="l">Song</th><th>Plays</th>', R.leader.map(r => `<tr><td class="dim l">${fmt(r.d)}</td>${songCell(r.s)}${pl(r.n)}</tr>`).join('')))],
       ['years', 'Most-played songs by year', 'The top five songs of each calendar year.', `<div class="rec-grid">${R.years.map(y => mini(`<a href="#/year-end/${y.y}">${y.y}</a>${y.part ? ' <small class="dim">(part)</small>' : ''}`, SH + '<th>Plays</th>', y.songs.map(([x, n], i) => sRow(i, x, pl(n))).join(''))).join('')}</div>`],
-      ['day', 'Most plays in one day', 'Each song counted once, on its biggest day. Holiday songs (Christmas and other holiday songs, mostly played Nov 15 to Jan 6) have their own list.',
-        grid(mini('Songs', SH + '<th>Plays</th><th>Date</th>', R.bestDay.map(([x, v], i) => sRow(i, x, pl(v.n), dt(v.d))).join('')),
-          mini('Holiday songs', SH + '<th>Plays</th><th>Date</th>', R.holDay.map(([x, v], i) => sRow(i, x, pl(v.n), dt(v.d))).join('')))],
+      ['day', 'Most plays in one day', 'Each song counted once, on its biggest day.', tbl(SH + '<th>Plays</th><th>Date</th>', R.bestDay.map(([x, v], i) => sRow(i, x, pl(v.n), dt(v.d))).join(''))],
       ['day-prog', 'Single-day record over time', 'Every time a song set a new high for plays in one day.', tbl(PH, prog(R.dayProg))],
       ['week', 'Most plays in one week', 'Chart weeks, Thursday to Wednesday. Each song counted once, on its biggest week (the date is the week’s last day).', tbl(SH + '<th>Plays</th><th>Week ending</th>', R.bestWeek.map(([x, v], i) => sRow(i, x, pl(v.n), dt(v.d))).join(''))],
       ['week-prog', 'Single-week record over time', 'Every time a song set a new high for plays in one chart week.', tbl(PH.replace('Set on', 'Week ending'), prog(R.weekProg))],
+      ['busiest', 'Biggest listening days', 'Every song, all plays that day.', tbl('<th>#</th><th class="l">Date</th><th>Plays</th>', R.busiest.map((x, i) => `<tr><td class="rk">${i + 1}</td><td class="l">${fmt(x.d, { weekday: 'short' })}</td>${pl(x.n)}</tr>`).join(''))],
       ['fastest', 'Fastest to a milestone', 'Days from a song’s first play to its 50th, 100th and 250th.', grid(...R.MARKS.map((m, k) => mini(`${m} plays`, SH + '<th>Days</th>', R.fast[k].map((f, i) => sRow(i, f.s, `<td class="pl" title="Reached ${fmt(f.d)}">${num(f.days)}</td>`)).join(''))))],
     ]],
     ['Chart', [
@@ -1783,27 +1785,46 @@ function renderRecords() {
     ]],
     ['Albums', [
       ['albums', 'Most-played albums', 'All plays of an album’s songs. Deluxe and expanded editions count with the album; Taylor’s Versions are their own albums. A release counts once three of its songs have been played.',
-        tbl(LH + '<th>Plays</th><th class="hide-sm">Songs played</th>', R.albums.map(([al, v], i) => lRow(i, al, pl(v.n), `<td class="dim hide-sm">${num(v.songs)}</td>`)).join(''))],
-      ['album-years', 'Most-played albums by year', 'The top five albums of each calendar year.', `<div class="rec-grid">${R.years.filter(y => y.albums.length).map(y => mini(`${y.y}${y.part ? ' <small class="dim">(part)</small>' : ''}`, LH + '<th>Plays</th>', y.albums.map(([al, n], i) => lRow(i, al, pl(n))).join(''))).join('')}</div>`],
+        tbl(LH + '<th>Plays</th><th class="hide-sm">Songs played</th>', R.albums.map(([al, v], i) => lRow(i, al, pl(v.n), `<td class="dim hide-sm">${num(v.songs)}</td>`, `al:${al}:0:${END}`)).join(''))],
+      ['album-years', 'Most-played albums by year', 'The top five albums of each calendar year.', `<div class="rec-grid">${R.years.filter(y => y.albums.length).map(y => mini(`${y.y}${y.part ? ' <small class="dim">(part)</small>' : ''}`, LH + '<th>Plays</th>', y.albums.map(([al, n], i) => lRow(i, al, pl(n), `al:${al}:${y.a}:${y.b}`)).join(''))).join('')}</div>`],
       ['album-day', 'Album records', 'Most plays in one day and in one chart week, each album on its best, and most weeks as the week’s top album.',
-        grid(mini('One day', LH + '<th>Plays</th>', R.albDay.map(([al, v], i) => lRow(i, al, `<td class="pl">${num(v.n)}<span class="subv">${fmt(v.d)}</span></td>`)).join('')),
-          mini('One week', LH + '<th>Plays</th>', R.albWeek.map(([al, v], i) => lRow(i, al, `<td class="pl">${num(v.n)}<span class="subv">${fmt(v.d)}</span></td>`)).join('')),
-          mini('Weeks at #1', LH + '<th>Weeks</th>', R.albOne.map(([al, n], i) => lRow(i, al, pl(n))).join('')))],
+        grid(mini('One day', LH + '<th>Plays</th>', R.albDay.map(([al, v], i) => lRow(i, al, `<td class="pl">${num(v.n)}<span class="subv">${fmt(v.d)}</span></td>`, `al:${al}:${v.d}:${v.d}`)).join('')),
+          mini('One week', LH + '<th>Plays</th>', R.albWeek.map(([al, v], i) => lRow(i, al, `<td class="pl">${num(v.n)}<span class="subv">${fmt(v.d)}</span></td>`, `al:${al}:${v.d - 6}:${v.d}`)).join('')),
+          mini('Weeks at #1', LH + '<th>Weeks</th>', R.albOne.map(([al, n], i) => lRow(i, al, pl(n), `al:${al}:0:${END}`)).join('')))],
     ]],
     ['Artists', [
-      ['artists', 'Most-played artists', 'Songs where the act is the lead artist.', tbl(AH + '<th>Plays</th><th class="hide-sm">Songs</th>', R.artists.map(([a, v], i) => aRow(i, a, pl(v.n), `<td class="dim hide-sm">${num(v.songs)}</td>`)).join(''))],
-      ['hundred', 'Most songs with 100 plays', 'Lead-artist songs with at least 100 all-time plays.', tbl(AH + '<th>Songs</th><th class="hide-sm">Total plays</th>', R.big.map(([a, n], i) => aRow(i, a, pl(n), `<td class="dim hide-sm">${num(ALL_ART().get(a).n)}</td>`)).join(''))],
-      ['artist-years', 'Top artist of every year', 'Calendar years.', tbl('<th class="l">Year</th><th class="l">Artist</th><th>Plays</th>', R.years.map(y => `<tr><td class="yr"><a href="#/year-end/${y.y}">${y.y}</a>${y.part ? '<small class="dim"> *</small>' : ''}</td>${artistCell(y.a1, '')}${pl(y.an)}</tr>`).join('')) + `<p class="dim" style="font-size:12.5px">* Partial year: plays start ${fmt(0)} and run through ${fmt(END)}.</p>`],
-    ]],
-    ['Listening', [
-      ['busiest', 'Biggest listening days', 'Every song, all plays that day.', tbl('<th>#</th><th class="l">Date</th><th>Plays</th>', R.busiest.map((x, i) => `<tr><td class="rk">${i + 1}</td><td class="l">${fmt(x.d, { weekday: 'short' })}</td>${pl(x.n)}</tr>`).join(''))],
+      ['artists', 'Most-played artists', 'Songs where the act is the lead artist.', tbl(AH + '<th>Plays</th><th class="hide-sm">Songs</th>', R.artists.map(([a, v], i) => aRowP(`ar:${a}:0:${END}`, i, a, pl(v.n), `<td class="dim hide-sm">${num(v.songs)}</td>`)).join(''))],
+      ['hundred', 'Most songs with 100 plays', 'Lead-artist songs with at least 100 all-time plays.', tbl(AH + '<th>Songs</th><th class="hide-sm">Total plays</th>', R.big.map(([a, n], i) => aRowP(`a100:${a}`, i, a, pl(n), `<td class="dim hide-sm">${num(ALL_ART().get(a).n)}</td>`)).join(''))],
+      ['artist-years', 'Top artist of every year', 'Calendar years.', tbl('<th class="l">Year</th><th class="l">Artist</th><th>Plays</th>', R.years.map(y => `<tr${tap(`ar:${y.a1}:${y.a}:${y.b}`)}><td class="yr"><a href="#/year-end/${y.y}">${y.y}</a>${y.part ? '<small class="dim"> *</small>' : ''}</td>${artistCell(y.a1, '')}${pl(y.an)}</tr>`).join('')) + `<p class="dim" style="font-size:12.5px">* Partial year: plays start ${fmt(0)} and run through ${fmt(END)}.</p>`],
     ]],
   ];
   const sec = (id, title, note, body) => `<section class="rec-sec" id="rec-${id}"><div class="sec-head"><h2>${title}</h2></div>${note ? `<p>${note}</p>` : ''}${body}</section>`;
+  const tab = GROUPS.find(([g]) => g.toLowerCase() === group) || GROUPS[0], [gname, secs] = tab;
   $('page').innerHTML = `<div class="ctitle"><h1>Records</h1><p>The biggest numbers in your Spotify history, ${fmt(0)} to ${fmt(END)}</p></div>
-    ${GROUPS.map(([g, secs]) => `<nav class="rec-jump"><b>${g}</b>${secs.map(([id, t]) => `<a href="#/records" data-jump="rec-${id}">${t}</a>`).join('')}</nav>`).join('')}
-    ${GROUPS.map(([g, secs]) => `<div class="rec-group" id="recg-${g.toLowerCase()}"><div class="kicker"><i></i>${g}</div></div>${secs.map(x => sec(...x)).join('')}`).join('')}`;
+    <div class="ye-tabs rec-tabs" role="tablist">${GROUPS.map(([g]) => `<a role="tab" href="#/records/${g.toLowerCase()}" aria-selected="${g === gname}">${g}</a>`).join('')}</div>
+    <p class="rec-toc">${secs.map(([id, t]) => `<a href="#/records/${gname.toLowerCase()}" data-jump="rec-${id}">${t}</a>`).join(' <span>·</span> ')}</p>
+    ${secs.map(x => sec(...x)).join('')}`;
   for (const a of $('page').querySelectorAll('[data-jump]')) a.onclick = e => { e.preventDefault(); $(a.dataset.jump).scrollIntoView({ behavior: 'smooth' }); };
+  $('page').insertAdjacentHTML('beforeend', '<dialog id="rec-pop" class="pop"></dialog>');
+  const dlg = $('rec-pop');
+  dlg.onclick = e => { if (e.target === dlg || e.target.closest('.pop-x') || e.target.closest('a')) dlg.close(); };
+  const open = tr => {
+    const [kind, id, a0, b0] = tr.dataset.pop.split(':'), k = +id;
+    const a = kind === 'a100' ? 0 : +a0, b = kind === 'a100' ? END : +b0, m = total(a, b);
+    let rows = [...m].filter(([x]) => kind === 'al' ? albumOf(x) === k : artistOf(x) === k);
+    if (kind === 'a100') rows = rows.filter(([, n]) => n >= 100);
+    rows.sort((p, q) => q[1] - p[1] || p[0] - q[0]);
+    const when = a === 0 && b === END ? 'all time' : a === b ? fmt(a) : `${fmt(a)} to ${fmt(b)}`;
+    const name = kind === 'al' ? `${esc(albumName(k))} · ${esc(aname(albumArtist(k)))}` : esc(aname(k));
+    const sub = kind === 'a100' ? `${plural(rows.length, 'song')} with 100 or more plays` : `${plural(rows.length, 'song')} played, ${plural(rows.reduce((t, r) => t + r[1], 0), 'play')} in all · ${when}`;
+    dlg.innerHTML = `<div class="pop-head"><h3>${name}</h3><button class="pop-x" aria-label="Close">&times;</button></div><p class="pop-sub">${sub}</p>
+      <div class="scroll pop-body"><table><thead><tr><th>#</th><th class="l">Song</th><th>Plays</th></tr></thead><tbody>${rows.map(([x, n], i) => `<tr><td class="rk">${i + 1}</td>${songCell(x)}<td class="pl">${num(n)}</td></tr>`).join('')}</tbody></table></div>`;
+    dlg.showModal();
+  };
+  for (const tr of $('page').querySelectorAll('tr[data-pop]')) {
+    tr.onclick = e => { if (!e.target.closest('a')) open(tr); };
+    tr.onkeydown = e => { if (e.key === 'Enter') open(tr); };
+  }
   const more = $('ones-more');
   if (more) more.onclick = () => { more.previousElementSibling.querySelector('tbody').innerHTML = R.ones.map(oneRow).join(''); more.remove(); };
 }
@@ -2380,7 +2401,7 @@ function route() {
   else if (view === 'year-end') { renderYearEnd(arg, location.hash.split('/')[3]); yeTabs(false); }
   else if (view === 'beat') renderStory(+arg || 0);
   else if (view === 'recent') renderRecent();
-  else if (view === 'records') renderRecords();
+  else if (view === 'records') renderRecords(arg);
   else if (view === 'ask') renderAsk(decodeURIComponent(location.hash.slice(6)));
   else if (view === 'history') { location.replace(`#/year-end/all-time${arg === 'artists' ? '/artists' : ''}`); return; }
   else if (view === 'artist' && DATA.artists[+arg] != null) { renderArtist(+arg); renderArtistSongs(+arg); hookArtistSongs(+arg); hookWeeks(+arg); hookMovie({ artist: +arg }); }
