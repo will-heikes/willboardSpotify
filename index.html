@@ -1965,14 +1965,16 @@ function cmOwn(act, unit, cum = false) {
 // All-time standings for the All Time page (Will, 2026-11-03): the top 20 songs or artists by every
 // play up to the end of each period, with their running totals. A song or act can only climb into it
 // in a period it was played, so each period only re-ranks last period's top 20 plus whoever was played
-function cmCum(kind, unit, size = 20) {
-  const key = 'allcum' + kind + unit + size;
+// With a span (a Year-End year, Will 2026-11-03), the standings start from zero on its first day
+function cmCum(kind, unit, size = 20, span = null) {
+  const key = 'allcum' + kind + unit + size + (span ? span.a + '-' + span.b : '');
   if (CM_DATA[key]) return CM_DATA[key];
   const W = cmPeriods(unit), runs = new Map(), debut = new Map(), tops = [], tot = [], active = [];
   const sofar = new Map(), best = new Map(), songCum = new Map();
   let prevTop = [], prevM = new Map(), all = 0;
   W.forEach((w, i) => {
-    const m = total(w.a, w.b), played = new Set();
+    if (span && (w.b < span.a || w.a > span.b)) { active[i] = false; tot[i] = [0, 0]; return; }
+    const m = span ? total(Math.max(w.a, span.a), Math.min(w.b, span.b)) : total(w.a, w.b), played = new Set();
     for (const [x, n] of m) {
       all += n;
       const c = (songCum.get(x) || 0) + n; songCum.set(x, c);
@@ -2040,7 +2042,8 @@ function chartMovie(el, opt = {}) {
   const whichOpts = act != null
     ? '<option value="songs" selected>Their songs</option><option value="own">Their top 10</option><option value="cum">Their top 10, all-time</option><option value="artists">Artist rank</option>'
     : `<option value="songs"${kind === 'songs' ? ' selected' : ''}>Top 10 songs</option><option value="artists"${kind === 'artists' ? ' selected' : ''}>Top 10 artists</option>`
-      + (opt.units ? '<option value="cum-songs">Top 20 songs, all-time</option><option value="cum-artists">Top 20 artists, all-time</option>' : '');
+      + (opt.units ? '<option value="cum-songs">Top 20 songs, all-time</option><option value="cum-artists">Top 20 artists, all-time</option>'
+        : year ? `<option value="cum-songs">Top 20 songs, ${year} so far</option><option value="cum-artists">Top 20 artists, ${year} so far</option>` : '');
   el.innerHTML = `<div class="cmv${year || act != null ? ' ye' : ''}">${act != null ? '<div class="pick"></div>' : ''}<div class="stage"><svg></svg><div class="date"><small></small><b></b></div><div class="tally"><div class="tl"><small class="l1"></small><b class="n1">0</b></div><div class="tl"><small class="l5"></small><b class="n5">0</b></div></div><div class="sum" hidden></div></div>
     <div class="ctl"><button class="play">▶ Play</button><button class="restart" title="Start over">⟲</button>
       <input type="range" min="0" step="0.01" aria-label="Timeline">
@@ -2072,9 +2075,10 @@ function chartMovie(el, opt = {}) {
     const allCum = k.startsWith('cum-');
     cum = k === 'cum' || allCum; own = k === 'own' || k === 'cum'; kind = own ? 'songs' : allCum ? k.slice(4) : k;
     SZ = own ? 10 : allCum ? 20 : act != null ? 40 : CM_SIZE; HI = SZ >= 20 ? 10 : 5;
-    D = own ? cmOwn(act, unit, cum) : allCum ? cmCum(kind, unit, SZ) : cmData(kind, unit, SZ); W = D.W;
+    D = own ? cmOwn(act, unit, cum) : allCum ? cmCum(kind, unit, SZ, year ? sp : null) : cmData(kind, unit, SZ); W = D.W;
     if (year) {
-      first = W.findIndex(w => w.d >= sp.a); last = W.findLastIndex(w => w.d <= sp.b);
+      first = W.findIndex(w => w.d >= sp.a); last = W.findLastIndex(w => (cum ? w.a : w.d) <= sp.b);
+      // The year's standings take in its last few days too, so they end where the Year-End list does
       runs = D.runs.filter(r => r.b >= first && r.a <= last && r.p.some((p, j) => p && r.a + j >= first && r.a + j <= last));
     } else if (act != null) {
       runs = D.runs.filter(r => songsK() ? onSong(r.id, act) : r.id === act);
@@ -2196,7 +2200,7 @@ function chartMovie(el, opt = {}) {
     svg.innerHTML = g;
     const wi = Math.min(i0, last);
     root.querySelector('.date b').textContent = W[wi].lab;
-    root.querySelector('.date small').textContent = `${cum ? (act != null ? 'Their all-time top 10 · as of' : (stage.clientWidth < 600 ? 'All-time · as of' : 'All-time top 20 · as of')) : own ? `Their ${U().adj.toLowerCase()} top 10` : `${U().adj} top ${SZ}${songsK() ? '' : ' artists'}`}${unit === 'week' && !cum ? ' · week of' : ''}`;
+    root.querySelector('.date small').textContent = `${cum ? (act != null ? 'Their all-time top 10 · as of' : (year ? (stage.clientWidth < 600 ? `${year} so far` : `${year} top 20 so far · week of`) : stage.clientWidth < 600 ? 'All-time · as of' : 'All-time top 20 · as of')) : own ? `Their ${U().adj.toLowerCase()} top 10` : `${U().adj} top ${SZ}${songsK() ? '' : ' artists'}`}${unit === 'week' && !cum ? ' · week of' : ''}`;
     // Running totals of what has reached #1 and the top 5 so far (from the start of the year on a year)
     const upTo = Math.min(last, f < .5 ? i0 : i0 + 1);
     let n1 = 0, n5 = 0;
@@ -2368,10 +2372,10 @@ function chartMovie(el, opt = {}) {
     const tt = D.tot[last] || [0, 0], u = U();
     const nums = n(tt[0], 'Total plays') + n(tt[1], songsK() ? 'Songs played' : 'Artists played') + n(leaders.length, leaders.length === 1 ? 'Leader' : 'Different leaders') + n(runs.length, `${songsK() ? 'Songs' : 'Artists'} in the top 20`);
     const sub = r => songsK() ? esc(aname(artistOf(r.id))) + ' · ' : '';
-    const hls = fin.slice(0, 3).map(r => `<a class="hl" href="${href(r.id)}">${pic(r.id, songsK() ? '' : 'round')}<span><small>#${pos(r, last)} all-time</small><b>${esc(name(r.id))}</b><em>${sub(r)}${plural(val(r), 'play')}</em></span></a>`).join('');
-    sumEl.innerHTML = `<div class="sum-in"><div class="sum-h"><small>All-time top 20 ${songsK() ? 'songs' : 'artists'} · as of</small><b>${esc(W[last].lab)}</b></div>
+    const hls = fin.slice(0, 3).map(r => `<a class="hl" href="${href(r.id)}">${pic(r.id, songsK() ? '' : 'round')}<span><small>#${pos(r, last)} ${year ? `of ${year}` : 'all-time'}</small><b>${esc(name(r.id))}</b><em>${sub(r)}${plural(val(r), 'play')}</em></span></a>`).join('');
+    sumEl.innerHTML = `<div class="sum-in"><div class="sum-h"><small>${year ? `${year} top 20 ${songsK() ? 'songs' : 'artists'} · final standings` : `All-time top 20 ${songsK() ? 'songs' : 'artists'} · as of`}</small><b>${year ? `${year} in plays` : esc(W[last].lab)}</b></div>
       <div class="nums">${nums}</div><div class="hls">${hls}</div>
-      ${leaders.length ? `<div class="ones"><small>Every all-time leader</small>${leaders.sort((a, b) => a.first1 - b.first1).map(r => `<a href="${href(r.id)}" style="--c:${color.get(r.id)}">${esc(name(r.id))}<i>${r.p.filter(p => p === 1).length}</i></a>`).join('')}</div>` : ''}
+      ${leaders.length ? `<div class="ones"><small>${year ? 'Every leader of the year' : 'Every all-time leader'}</small>${leaders.sort((a, b) => a.first1 - b.first1).map(r => `<a href="${href(r.id)}" style="--c:${color.get(r.id)}">${esc(name(r.id))}<i>${r.p.filter(p => p === 1).length}</i></a>`).join('')}</div>` : ''}
       <button class="again">⟲ Watch again</button></div>`;
     stage.style.minHeight = svg.getAttribute('height') + 'px';
     stage.classList.add('ended');
