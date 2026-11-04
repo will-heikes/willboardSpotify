@@ -1879,6 +1879,7 @@ const CM_SIZE = 10;
 const CM_DATA = {};
 // Periods are the Thursday weekly charts, calendar months (the All Time tab's monthly view) or
 // calendar years (an artist page's yearly view; the current year runs to date)
+const CM_YEAR = new Map(), CM_HITS = new Map();
 function cmPeriods(unit) {
   if (unit === 'year') {
     const out = [];
@@ -2064,9 +2065,33 @@ function chartMovie(el, opt = {}) {
   const U = () => unit === 'month' ? { one: 'month', many: 'months', ab: 'mo', adj: 'Monthly' } : unit === 'year' ? { one: 'year', many: 'years', ab: 'yr', adj: 'Yearly' } : { one: 'week', many: 'weeks', ab: 'wk', adj: 'Weekly' };
   // On an artist page, "Artist rank" follows the act alone on the artists chart
   const solo = () => act != null && !songsK();
-  // The music: a song plays itself; an artist plays their top song of the period
-  const tuneOf = (x, i) => songsK() ? x : D.tops[i]?.get(x);
+  // The music: a song plays itself; an artist works through their biggest songs of that year, moving on
+  // to the next one each time a clip ends (Will, 2026-11-04), and back to the top after their top 10
+  const rot = new Map();
+  let tuneKey = null;
+  const yearOf = i => +dayStr(W[Math.min(i, W.length - 1)].b).slice(0, 4);
+  function yearHits(x, i) {
+    const y = yearOf(i), k = x + ':' + y;
+    if (!CM_HITS.has(k)) {
+      if (!CM_YEAR.has(y)) CM_YEAR.set(y, total(Math.round((Date.UTC(y, 0, 1) - T0) / DAY), Math.round((Date.UTC(y + 1, 0, 1) - T0) / DAY) - 1));
+      CM_HITS.set(k, rank(new Map([...CM_YEAR.get(y)].filter(([s]) => onSong(s, x)))).slice(0, 10).map(r => r[0]));
+    }
+    return [k, CM_HITS.get(k)];
+  }
+  const tuneOf = (x, i) => {
+    if (songsK()) return x;
+    const [k, list] = yearHits(x, i), ok = list.filter(s => !bad.has(s));
+    return ok.length ? ok[(rot.get(k) || 0) % ok.length] : D.tops[i]?.get(x);
+  };
+  const keyOf = (x, i) => songsK() ? null : yearHits(x, i)[0];
   const A = [new Audio(), new Audio()].map(a => { a.loop = true; a.volume = 0; return a; });
+  // A clip that ends: a song starts again; an artist moves on to their next hit
+  function clipEnded(a) {
+    if (cur.a !== a) return;
+    const k = tuneKey;
+    if (!songsK() && k && !ended) { rot.set(k, (rot.get(k) || 0) + 1); draw(); }
+    if (cur.a === a) { a.currentTime = 0; a.play().catch(() => {}); }
+  }
   const tracks = {}, want = { id: null }, bad = new Set(), tried = new Set();
   let heard = {}, cur = { id: null, a: null };
 
@@ -2177,7 +2202,7 @@ function chartMovie(el, opt = {}) {
         else d += `M${hx.toFixed(1)} ${hy.toFixed(1)}`;
         const cp = f < .5 ? p0 || p1 : p1 || p0, wi = f < .5 ? i0 : Math.min(last, i0 + 1), tn = tuneOf(xs.id, wi);
         if (cp && (!lead || cp < lead.p)) lead = { id: xs.id, p: cp };
-        if (cp && tn != null && !bad.has(tn) && (!tune || cp < tune.p)) tune = { s: tn, p: cp };
+        if (cp && tn != null && !bad.has(tn) && (!tune || cp < tune.p)) tune = { s: tn, p: cp, k: keyOf(xs.id, wi) };
         const h = head(xs); seen.add(xs.id);
         h.style.opacity = !p0 ? f : !p1 ? 1 - f : 1;
         h.style.transform = `translate(${(hx - hs).toFixed(1)}px, ${(hy - hs).toFixed(1)}px)`;
@@ -2227,7 +2252,7 @@ function chartMovie(el, opt = {}) {
     const on = tune ? tune.s : lead && songsK() ? lead.id : null;
     if (empty) { now.textContent = songsK() ? `${aname(act)} has no songs on the ${U().adj.toLowerCase()} top 40.` : `${aname(act)} never made the ${U().adj.toLowerCase()} top 40 artists chart.`; return; }
     now.textContent = on != null ? `${tune && !muted ? '♪ ' : ''}${song(on)} · ${aname(artistOf(on))}` : '';
-    if (!ended) { want.id = run && !muted && tune ? tune.s : null; sync(); if (run && !muted) for (const x of soon) if (x) prime(x.s); }
+    if (!ended) { tuneKey = tune?.k ?? null; want.id = run && !muted && tune ? tune.s : null; sync(); if (run && !muted) for (const x of soon) if (x) prime(x.s); }
   }
 
   // Music: each preview is fetched once; two players crossfade, and a song picks up where it left off
@@ -2248,7 +2273,7 @@ function chartMovie(el, opt = {}) {
   async function sync() {
     if (want.id === cur.id) return;
     const id = want.id, old = cur.a;
-    if (old && cur.id != null) heard[cur.id] = old.currentTime;
+    if (old && cur.id != null) heard[cur.id] = old.ended || old.currentTime > (old.duration || 1e9) - .5 ? 0 : old.currentTime;
     cur = { id, a: null };
     if (old) fade(old, 0);
     if (id == null) return;
@@ -2260,12 +2285,13 @@ function chartMovie(el, opt = {}) {
     warm.delete(url);
     if (a) { a._f = (a._f || 0) + 1; a.volume = 0; if (heard[id]) a.currentTime = heard[id]; }
     else { a = spare(); a._f = (a._f || 0) + 1; a.src = heard[id] ? `${url}#t=${heard[id].toFixed(2)}` : url; a.volume = 0; }
+    a.loop = songsK(); a.onended = () => clipEnded(a);
     cur.a = a;
     try { await a.play(); if (cur.a === a) fade(a, .8); }
     catch (e) {
       // A phone may refuse a player that wasn't started by a tap: fall back to the two it woke
       if (e.name === 'NotAllowedError' && !A.includes(a) && cur.a === a) {
-        const b = spare(); b._f = (b._f || 0) + 1; b.src = heard[id] ? `${url}#t=${heard[id].toFixed(2)}` : url; b.volume = 0; cur.a = b;
+        const b = spare(); b.loop = songsK(); b.onended = () => clipEnded(b); b._f = (b._f || 0) + 1; b.src = heard[id] ? `${url}#t=${heard[id].toFixed(2)}` : url; b.volume = 0; cur.a = b;
         try { await b.play(); if (cur.a === b) fade(b, .8); return; } catch (e2) { e = e2; }
       }
       // A Deezer link that won't play here gets one more go with Apple's preview
