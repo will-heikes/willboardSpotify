@@ -349,6 +349,7 @@ body.on-ask .ask-fab { display: none; }
 /* Directories */
 .search { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .search input { flex: 1; min-width: 200px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: 15px; }
+.dir-dates { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 0 0 14px; }
 .from-al { margin-top: 10px; font-size: 15px; color: var(--ink-soft); }
 .from-al a { font-weight: 700; color: var(--ink); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
@@ -1075,7 +1076,7 @@ function art(url, name, cls = '') {
 }
 const songArt = (s, cls) => art(IMG(DATA.songs[s][3]), song(s), cls);
 const artistArt = (a, cls = 'round') => art(IMG(DATA.aimg?.[a]), aname(a), cls);
-const placed = (a, pos, cls = '') => `<span class="place ${cls}" title="#${num(pos)} all-time"><b>#${num(pos)}</b>${artistArt(a, '')}</span>`;
+const placed = (a, pos, cls = '', when = 'all-time') => `<span class="place ${cls}" title="#${num(pos)} ${when}"><b>#${num(pos)}</b>${artistArt(a, '')}</span>`;
 const PLAY_ICON = '<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>', STOP_ICON = '<svg viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg>';
 const playBtn = (s, cls = '') => `<button class="play ${cls}" data-play="${s}" aria-label="Play a preview of ${esc(song(s))}" aria-pressed="false">${PLAY_ICON}</button>`;
 function songCell(s) {
@@ -1483,24 +1484,41 @@ function hookWeeks(a = null) {
   open.onclick = () => dlg.showModal();
   dlg.onclick = e => { if (e.target === dlg || e.target.closest('.pop-x') || e.target.closest('a')) dlg.close(); };
 }
+// Directories (Artists, Songs, Albums) share one date picker, All time by default (Will 2026-11-15)
+const DS = { preset: 'all', from: dayStr(Math.max(0, END - 29)), to: dayStr(END) };
+function dirRange() {
+  const [s, e, label] = range(DS);
+  return { s, e, label, m: DS.preset === 'all' ? ALL : total(s, e), when: DS.preset === 'all' ? 'all-time' : label.toLowerCase() };
+}
+const dirPicker = () => `<div class="dir-dates"><div class="seg" role="group" aria-label="Dates" id="dp-presets">${[['week', 'Last 7 days'], ['month', 'This month'], ['year', 'This year'], ['all', 'All time'], ['custom', 'Custom']].map(([k, l]) => `<button data-p="${k}" aria-pressed="${DS.preset === k}">${l}</button>`).join('')}</div>
+  <span class="ev-dates" ${DS.preset === 'custom' ? '' : 'hidden'}><input type="date" id="dp-from" value="${DS.from}" min="${DATA.start}" max="${DATA.end}" aria-label="From"> to <input type="date" id="dp-to" value="${DS.to}" min="${DATA.start}" max="${DATA.end}" aria-label="To"></span></div>`;
+function hookDir(redo) {
+  const again = () => redo($('q').value);
+  for (const b of $('dp-presets').children) b.onclick = () => { DS.preset = b.dataset.p; again(); };
+  for (const id of ['dp-from', 'dp-to']) $(id).onchange = () => { DS.from = $('dp-from').value || DS.from; DS.to = $('dp-to').value || DS.to; again(); };
+}
+const dirHead = (title, n, what, r) => `<div class="sec-head"><h2>${title}</h2><small class="through">${num(n)} ${what}${DS.preset === 'all' ? ', most played first' : ` played · ${esc(r.label)}`}</small></div>${dirPicker()}`;
 function renderArtists(q = '', shown = 120) {
   ART_LIST ??= rankArtists(artistTotals(ALL));
   PLACE ??= new Map(ART_LIST.map(([a], i) => [a, i + 1]));
-  const f = fold(q), list = f ? ART_LIST.filter(([a]) => fold(aname(a)).includes(f)) : ART_LIST;
-  $('page').innerHTML = `<div class="sec-head"><h2>Artists</h2><small class="through">${num(ART_LIST.length)} artists, most played first</small></div>
+  const r = dirRange(), all = DS.preset === 'all' ? ART_LIST : rankArtists(artistTotals(r.m));
+  const pos = DS.preset === 'all' ? PLACE : new Map(all.map(([a], i) => [a, i + 1]));
+  const f = fold(q), list = f ? all.filter(([a]) => fold(aname(a)).includes(f)) : all;
+  $('page').innerHTML = `${dirHead('Artists', all.length, 'artists', r)}
     <div class="search"><input id="q" type="search" placeholder="Search artists" value="${esc(q)}" aria-label="Search artists"></div>
-    <div class="tiles">${list.slice(0, shown).map(([a, v]) => `<a class="tile" href="#/artist/${a}">${placed(a, PLACE.get(a))}<span><b>${esc(aname(a))}</b><br><small>${plural(v.n, 'play')}</small></span></a>`).join('') || '<p class="empty">No artists match.</p>'}</div>
+    <div class="tiles">${list.slice(0, shown).map(([a, v]) => `<a class="tile" href="#/artist/${a}">${placed(a, pos.get(a), '', r.when)}<span><b>${esc(aname(a))}</b><br><small>${plural(v.n, 'play')}</small></span></a>`).join('') || '<p class="empty">No artists match these dates.</p>'}</div>
     ${list.length > shown ? `<button class="more" id="more">Show more (${num(list.length - shown)} left)</button>` : ''}`;
-  hookSearch(q => renderArtists(q), () => renderArtists(q, shown + 240));
+  hookSearch(q => renderArtists(q), () => renderArtists(q, shown + 240)); hookDir(renderArtists);
 }
 function renderSongs(q = '', shown = 100) {
-  const f = fold(q), all = rank(ALL);
+  const r = dirRange(), f = fold(q), all = rank(r.m);
+  const pos = DS.preset === 'all' ? ALL_POS : new Map(all.map(([s], i) => [s, i + 1]));
   const list = f ? all.filter(([s]) => fold(song(s) + ' ' + aname(artistOf(s))).includes(f)) : all;
-  $('page').innerHTML = `<div class="sec-head"><h2>Songs</h2><small class="through">${num(all.length)} songs, most played first</small></div>
+  $('page').innerHTML = `${dirHead('Songs', all.length, 'songs', r)}
     <div class="search"><input id="q" type="search" placeholder="Search songs or artists" value="${esc(q)}" aria-label="Search songs"></div>
-    <div class="card scroll"><table><thead><tr><th>#</th><th class="l">Song</th><th></th><th>Plays</th><th class="hide-sm">First play</th></tr></thead><tbody>${list.slice(0, shown).map(([s, n]) => `<tr><td class="rk">${ALL_POS.get(s)}</td>${songCell(s)}<td class="pb">${playBtn(s)}</td><td class="pl">${num(n)}</td><td class="dim hide-sm">${fmt(FIRST.get(s))}</td></tr>`).join('') || '<tr><td class="empty">No songs match.</td></tr>'}</tbody></table></div>
+    <div class="card scroll"><table><thead><tr><th>#</th><th class="l">Song</th><th></th><th>Plays</th><th class="hide-sm">First play</th></tr></thead><tbody>${list.slice(0, shown).map(([s, n]) => `<tr><td class="rk">${pos.get(s)}</td>${songCell(s)}<td class="pb">${playBtn(s)}</td><td class="pl">${num(n)}</td><td class="dim hide-sm">${fmt(FIRST.get(s))}</td></tr>`).join('') || '<tr><td class="empty">No songs match these dates.</td></tr>'}</tbody></table></div>
     ${list.length > shown ? `<button class="more" id="more">Show more (${num(list.length - shown)} left)</button>` : ''}`;
-  hookSearch(q => renderSongs(q), () => renderSongs(q, shown + 200));
+  hookSearch(q => renderSongs(q), () => renderSongs(q, shown + 200)); hookDir(renderSongs);
 }
 const ALL_POS = new Map(rank(ALL).map(([s], i) => [s, i + 1]));
 
@@ -1508,26 +1526,30 @@ const ALL_POS = new Map(rank(ALL).map(([s], i) => [s, i + 1]));
 // use the album Willboard.com files them under; the rest use the album Spotify played them from most,
 // once three of its songs have been played. Songs only ever played as singles have no album
 let ALB_LIST = null, ALB_POS = null;
-function albumTotals() {
-  if (ALB_LIST) return ALB_LIST;
+function albumTotals(m = ALL) {
+  if (m === ALL && ALB_LIST) return ALB_LIST;
   const t = new Map();
-  for (const [s, n] of ALL) { const al = DATA.songs[s][6] ?? -1; if (al < 0) continue; const v = t.get(al) || { n: 0, songs: 0 }; v.n += n; v.songs++; t.set(al, v); }
-  ALB_LIST = [...t].sort((a, b) => b[1].n - a[1].n || a[0] - b[0]);
+  for (const [s, n] of m) { const al = DATA.songs[s][6] ?? -1; if (al < 0) continue; const v = t.get(al) || { n: 0, songs: 0 }; v.n += n; v.songs++; t.set(al, v); }
+  const list = [...t].sort((a, b) => b[1].n - a[1].n || a[0] - b[0]);
+  if (m !== ALL) return list;
+  ALB_LIST = list;
   ALB_POS = new Map(ALB_LIST.map(([al], i) => [al, i + 1]));
   return ALB_LIST;
 }
 const albumArt = (al, cls = '') => { const s = DATA.albums[al][2]; return art(s >= 0 ? IMG(DATA.songs[s][3]) : '', DATA.albums[al][0], cls); };
-const albumPlaced = (al, cls = '') => `<span class="place ${cls}" title="#${num(ALB_POS.get(al))} all-time"><b>#${num(ALB_POS.get(al))}</b>${albumArt(al)}</span>`;
-const albumTile = (al, v) => `<a class="tile" href="#/album/${al}">${albumPlaced(al)}<span><b>${esc(DATA.albums[al][0])}</b><br><small>${esc(aname(DATA.albums[al][1]))} · ${plural(v.n, 'play')}</small></span></a>`;
+const albumPlaced = (al, cls = '', p = ALB_POS.get(al), when = 'all-time') => `<span class="place ${cls}" title="#${num(p)} ${when}"><b>#${num(p)}</b>${albumArt(al)}</span>`;
+const albumTile = (al, v, p, when) => `<a class="tile" href="#/album/${al}">${albumPlaced(al, '', p, when)}<span><b>${esc(DATA.albums[al][0])}</b><br><small>${esc(aname(DATA.albums[al][1]))} · ${plural(v.n, 'play')}</small></span></a>`;
 function renderAlbums(q = '', shown = 120) {
-  const all = albumTotals(), f = fold(q);
+  albumTotals();
+  const r = dirRange(), all = albumTotals(r.m), f = fold(q);
+  const pos = new Map(all.map(([al], i) => [al, i + 1]));
   const list = f ? all.filter(([al]) => fold(DATA.albums[al][0] + ' ' + aname(DATA.albums[al][1])).includes(f)) : all;
-  $('page').innerHTML = `<div class="sec-head"><h2>Albums</h2><small class="through">${num(all.length)} albums, most played first</small></div>
+  $('page').innerHTML = `${dirHead('Albums', all.length, 'albums', r)}
     <div class="search"><input id="q" type="search" placeholder="Search albums or artists" value="${esc(q)}" aria-label="Search albums"></div>
-    <div class="tiles">${list.slice(0, shown).map(([al, v]) => albumTile(al, v)).join('') || '<p class="empty">No albums match.</p>'}</div>
+    <div class="tiles">${list.slice(0, shown).map(([al, v]) => albumTile(al, v, pos.get(al), r.when)).join('') || '<p class="empty">No albums match these dates.</p>'}</div>
     ${list.length > shown ? `<button class="more" id="more">Show more (${num(list.length - shown)} left)</button>` : ''}
     <p class="foot">An album's plays are every play of its songs, from any release. Songs on the Willboard charts count toward the album Willboard lists them on; other songs toward the album Spotify played them from most, once three of its songs have been played. Deluxe and expanded editions count with the album; Taylor's Versions are their own albums. Songs only played as singles aren't on an album here.</p>`;
-  hookSearch(q => renderAlbums(q), () => renderAlbums(q, shown + 240));
+  hookSearch(q => renderAlbums(q), () => renderAlbums(q, shown + 240)); hookDir(renderAlbums);
 }
 function renderAlbum(al) {
   albumTotals();
